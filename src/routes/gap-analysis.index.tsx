@@ -123,6 +123,10 @@ function Page() {
         }
       />
 
+      <div className="mb-4">
+        <RoleAccessNotice permissions={["gap.approve", "gap.return", "scenario.run", "scenario.select"]} />
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {gapAnalyses.map((g) => (
           <Button
@@ -387,30 +391,34 @@ function Page() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button
+                  <PermissionButton
+                    permission="gap.approve"
                     onClick={() => {
-                      setGapRowStatus(openRow.id, "Approved", returnReason || undefined);
-                      toast.success("Row approved", {
-                        description: `${openRow.id} recorded in the session audit trail.`,
-                      });
-                      setOpenRow(null);
+                      if (setGapRowStatus(openRow.id, "Approved", returnReason || undefined)) {
+                        toast.success("Row approved", {
+                          description: `${openRow.id} recorded in the session audit trail.`,
+                        });
+                        setOpenRow(null);
+                      }
                     }}
                   >
                     Approve row
-                  </Button>
-                  <Button
+                  </PermissionButton>
+                  <PermissionButton
+                    permission="gap.return"
                     variant="outline"
                     disabled={returnReason.trim() === ""}
                     onClick={() => {
-                      setGapRowStatus(openRow.id, "Returned", returnReason.trim());
-                      toast.success("Row returned for correction", {
-                        description: `${openRow.id} returned with a recorded reason.`,
-                      });
-                      setOpenRow(null);
+                      if (setGapRowStatus(openRow.id, "Returned", returnReason.trim())) {
+                        toast.success("Row returned for correction", {
+                          description: `${openRow.id} returned with a recorded reason.`,
+                        });
+                        setOpenRow(null);
+                      }
                     }}
                   >
                     Return with reason
-                  </Button>
+                  </PermissionButton>
                 </div>
               </div>
             </>
