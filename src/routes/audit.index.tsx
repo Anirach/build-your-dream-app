@@ -30,7 +30,7 @@ import {
   buildTimeline,
   formatDuration,
   slaSummary,
-  slaTargetHours,
+  requestTargets,
 } from "@/demo-data/correction-timeline";
 import {
   mandateTypes,
