@@ -6,7 +6,7 @@ import { NoticeBanner } from "@/components/app/primitives";
 import { StatusBadge } from "@/components/app/status";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { permissionLabels, rolesWith, type Permission } from "@/demo-data/permissions";
+import { permissionLabels, roleName, rolesWith, type Permission } from "@/demo-data/permissions";
 import { useDemoState } from "@/demo-data/store";
 
 /** Button that is only enabled when the active role holds the permission. */
@@ -106,6 +106,5 @@ export function RoleAccessNotice({ permissions }: { permissions: Permission[] })
 
 function useRoleLabel() {
   const { can, role, actor } = useDemoState();
-  const label = `${actor}`;
-  return { can, roleLabel: label, role };
+  return { can, roleLabel: `${actor} · ${roleName(role)}` };
 }
