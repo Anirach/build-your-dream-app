@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Layers,
   ListChecks,
+  LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -190,8 +191,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = useActivePath();
-  const { role, setRole, resetDemo } = useDemoState();
+  const { role, setRole, resetDemo, actor, signOut } = useDemoState();
   const activeRole = roles.find((r) => r.id === role) ?? roles[3]!;
+  const initials = actor
+    .replace(/^Dr\.\s*/, "")
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("");
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -318,10 +325,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                     className="grid size-8 place-items-center rounded-full bg-soft-teal text-xs font-semibold text-navy"
                     aria-hidden
                   >
-                    MR
+                    {initials}
                   </span>
                   <span className="hidden text-left leading-tight xl:block">
-                    <span className="block text-xs font-semibold text-navy">Dr. Maya Rahman</span>
+                    <span className="block text-xs font-semibold text-navy">{actor}</span>
                     <span className="block text-[11px] text-muted-foreground">{activeRole.name}</span>
                   </span>
                 </Button>
@@ -351,6 +358,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                   }}
                 >
                   <RotateCcw className="size-4" aria-hidden /> Reset demo state
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    signOut();
+                    toast.info("Signed out", { description: "Pick another sample role to continue." });
+                  }}
+                >
+                  <LogOut className="size-4" aria-hidden /> Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
