@@ -52,6 +52,7 @@ import {
 } from "@/demo-data/mapping";
 import { standards } from "@/demo-data/standards";
 import { useDemoState } from "@/demo-data/store";
+import { PermissionButton, RoleAccessNotice } from "@/components/app/permission";
 import type { MappingRowView } from "@/demo-data/types";
 
 const TITLE = "AI Workbench - BDMS Intelligence";
@@ -328,15 +329,16 @@ function WorkbenchPage() {
             {counts.approved} approved · {counts.edited} edited · {counts.rejected} rejected ·{" "}
             {mappingRows.length - decidedCount} pending
           </p>
-          <Button
+          <PermissionButton
+            permission="review.complete"
             disabled={decidedCount === 0}
             onClick={() => {
               const ref = completeReview({ ...counts });
-              toast.success("Review recorded", { description: `Audit reference ${ref}` });
+              if (ref) toast.success("Review recorded", { description: `Audit reference ${ref}` });
             }}
           >
             <CheckCircle2 className="size-4" aria-hidden /> Complete review
-          </Button>
+          </PermissionButton>
           <Button variant="outline" onClick={resetDemo}>
             <RotateCcw className="size-4" aria-hidden /> Reset demo state
           </Button>
@@ -406,11 +408,12 @@ function ClauseSheet({
       toast.error("A rejection reason is required");
       return;
     }
-    onDecide(row, {
+    const applied = onDecide(row, {
       status,
       standardId: status === "Rejected" ? null : selected || null,
       ...(reason.trim() ? { reason: reason.trim() } : {}),
     });
+    if (!applied) return;
     toast.success(`Clause ${row.clauseNo} ${status.toLowerCase()}`);
     setReason("");
     setStandardId("");
@@ -480,15 +483,23 @@ function ClauseSheet({
                 />
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => record("Approved")}>
+                <PermissionButton permission="mapping.approve" onClick={() => record("Approved")}>
                   <CheckCircle2 className="size-4" aria-hidden /> Approve
-                </Button>
-                <Button variant="secondary" onClick={() => record("Edited")}>
+                </PermissionButton>
+                <PermissionButton
+                  permission="mapping.edit"
+                  variant="secondary"
+                  onClick={() => record("Edited")}
+                >
                   <Pencil className="size-4" aria-hidden /> Save edit
-                </Button>
-                <Button variant="outline" onClick={() => record("Rejected")}>
+                </PermissionButton>
+                <PermissionButton
+                  permission="mapping.reject"
+                  variant="outline"
+                  onClick={() => record("Rejected")}
+                >
                   <XCircle className="size-4" aria-hidden /> Reject
-                </Button>
+                </PermissionButton>
               </div>
             </div>
           </>
