@@ -515,6 +515,43 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [actor, authorise, correctionBlocker, correctionRequests, pushEvent, role],
   );
 
+  const setSignOffRule = useCallback<DemoState["setSignOffRule"]>(
+    (mandateType, patch) => {
+      if (!authorise("roles.manage", "Sign-off rule", mandateType)) return false;
+      const before = ruleSummary(ruleFor(signOffRules, mandateType));
+      const next = { ...ruleFor(signOffRules, mandateType), ...patch, mandateType };
+      setSignOffRules((prev) => ({ ...prev, [mandateType]: next }));
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Updated reviewer sign-off rule for ${mandateType}`,
+        objectType: "Sign-off rule",
+        objectRef: mandateType,
+        beforeAfter: `${before} -> ${ruleSummary(next)}`,
+        reason: `${actor} changed the configurable sign-off rule (applies to new requests)`,
+        traceId: "trc-session",
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent, signOffRules],
+  );
+
+  const resetSignOffRules = useCallback<DemoState["resetSignOffRules"]>(() => {
+    if (!authorise("roles.manage", "Sign-off rule", "all")) return false;
+    setSignOffRules(baselineSignOffRules());
+    pushEvent({
+      actor,
+      actorType: "Human",
+      action: "Reset all reviewer sign-off rules",
+      objectType: "Sign-off rule",
+      objectRef: "all mandate types",
+      beforeAfter: "session changes -> baseline governance rules",
+      reason: `${actor} restored the baseline sign-off rules`,
+      traceId: "trc-session",
+    });
+    return true;
+  }, [actor, authorise, pushEvent]);
+
   const setRolePermission = useCallback<DemoState["setRolePermission"]>(
     (targetRole, permission, granted) => {
       if (!authorise("roles.manage", "Role permission", `${targetRole}:${permission}`)) return false;
@@ -583,6 +620,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
 
   const resetDemo = useCallback(() => {
     setPermissionMatrix(baselineMatrix());
+    setSignOffRules(baselineSignOffRules());
     setRoleAssignments(
       Object.fromEntries(
         (Object.keys(baselineMatrix()) as RoleId[]).map((r) => [r, actorFor(r)] as const),
@@ -629,6 +667,9 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       rejectCorrection,
       applyCorrection,
       correctionBlocker,
+      signOffRules,
+      setSignOffRule,
+      resetSignOffRules,
       permissionMatrix,
       setRolePermission,
       resetRolePermissions,
@@ -661,6 +702,9 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       rejectCorrection,
       applyCorrection,
       correctionBlocker,
+      signOffRules,
+      setSignOffRule,
+      resetSignOffRules,
       permissionMatrix,
       setRolePermission,
       resetRolePermissions,
