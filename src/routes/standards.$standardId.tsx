@@ -40,7 +40,7 @@ function StandardDetail() {
       <div className="grid gap-5 lg:grid-cols-3">
         <SectionCard className="lg:col-span-2" title="Measurable elements">
           <ul className="space-y-2 text-sm">
-            {standard.measurableElements.map((me) => (
+            {standard.measurableElements.map((me: { id: string; text: string }) => (
               <li key={me.id} className="rounded-lg border border-border px-3 py-2">
                 <span className="tnum font-semibold text-navy">{me.id}</span> {me.text}
               </li>
