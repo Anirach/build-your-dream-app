@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuditIndexRouteImport } from './routes/audit.index'
+import { Route as DataIntakeIndexRouteImport } from './routes/data-intake.index'
 import { Route as GapAnalysisIndexRouteImport } from './routes/gap-analysis.index'
 import { Route as ProgrammeIndexRouteImport } from './routes/programme.index'
 import { Route as ReviewsIndexRouteImport } from './routes/reviews.index'
@@ -29,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuditIndexRoute = AuditIndexRouteImport.update({
   id: '/audit/',
   path: '/audit/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataIntakeIndexRoute = DataIntakeIndexRouteImport.update({
+  id: '/data-intake/',
+  path: '/data-intake/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GapAnalysisIndexRoute = GapAnalysisIndexRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit/': typeof AuditIndexRoute
+  '/data-intake/': typeof DataIntakeIndexRoute
   '/gap-analysis/': typeof GapAnalysisIndexRoute
   '/programme/': typeof ProgrammeIndexRoute
   '/reviews/': typeof ReviewsIndexRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit': typeof AuditIndexRoute
+  '/data-intake': typeof DataIntakeIndexRoute
   '/gap-analysis': typeof GapAnalysisIndexRoute
   '/programme': typeof ProgrammeIndexRoute
   '/reviews': typeof ReviewsIndexRoute
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit/': typeof AuditIndexRoute
+  '/data-intake/': typeof DataIntakeIndexRoute
   '/gap-analysis/': typeof GapAnalysisIndexRoute
   '/programme/': typeof ProgrammeIndexRoute
   '/reviews/': typeof ReviewsIndexRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/'
     | '/standards/$standardId'
     | '/audit/'
+    | '/data-intake/'
     | '/gap-analysis/'
     | '/programme/'
     | '/reviews/'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/'
     | '/standards/$standardId'
     | '/audit'
+    | '/data-intake'
     | '/gap-analysis'
     | '/programme'
     | '/reviews'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/'
     | '/standards/$standardId'
     | '/audit/'
+    | '/data-intake/'
     | '/gap-analysis/'
     | '/programme/'
     | '/reviews/'
@@ -164,6 +176,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   StandardsStandardIdRoute: typeof StandardsStandardIdRoute
   AuditIndexRoute: typeof AuditIndexRoute
+  DataIntakeIndexRoute: typeof DataIntakeIndexRoute
   GapAnalysisIndexRoute: typeof GapAnalysisIndexRoute
   ProgrammeIndexRoute: typeof ProgrammeIndexRoute
   ReviewsIndexRoute: typeof ReviewsIndexRoute
@@ -188,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/audit'
       fullPath: '/audit/'
       preLoaderRoute: typeof AuditIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-intake/': {
+      id: '/data-intake/'
+      path: '/data-intake'
+      fullPath: '/data-intake/'
+      preLoaderRoute: typeof DataIntakeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gap-analysis/': {
@@ -260,6 +280,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   StandardsStandardIdRoute: StandardsStandardIdRoute,
   AuditIndexRoute: AuditIndexRoute,
+  DataIntakeIndexRoute: DataIntakeIndexRoute,
   GapAnalysisIndexRoute: GapAnalysisIndexRoute,
   ProgrammeIndexRoute: ProgrammeIndexRoute,
   ReviewsIndexRoute: ReviewsIndexRoute,
