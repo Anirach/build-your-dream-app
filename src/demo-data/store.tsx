@@ -315,6 +315,12 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   );
 
   const resetDemo = useCallback(() => {
+    setPermissionMatrix(baselineMatrix());
+    setRoleAssignments(
+      Object.fromEntries(
+        (Object.keys(baselineMatrix()) as RoleId[]).map((r) => [r, actorFor(r)] as const),
+      ) as Record<RoleId, string>,
+    );
     setClauseDecisions({});
     setSessionEvents([]);
     setAuditReference(null);
@@ -349,6 +355,11 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       reviewStatuses,
       reassign,
       recordCorrection,
+      permissionMatrix,
+      setRolePermission,
+      resetRolePermissions,
+      roleAssignments,
+      assignRoleActor,
       auditEvents: [...sessionEvents, ...seedAuditEvents],
       resetDemo,
     }),
@@ -371,6 +382,11 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       reviewStatuses,
       reassign,
       recordCorrection,
+      permissionMatrix,
+      setRolePermission,
+      resetRolePermissions,
+      roleAssignments,
+      assignRoleActor,
       sessionEvents,
       resetDemo,
     ],
