@@ -324,7 +324,7 @@ function TrendChart() {
   });
   const baselinePoints = progressSeries.map((p, i) => {
     const x = (i / Math.max(progressSeries.length - 1, 1)) * width;
-    const y = height - (p.baseline / max) * height;
+    const y = height - (p.planned / max) * height;
     return `${x},${y}`;
   });
 
@@ -360,7 +360,7 @@ function TrendChart() {
           Baseline BL0
         </span>
         <span>
-          {progressSeries[0]?.label} to {progressSeries[progressSeries.length - 1]?.label}
+          {progressSeries[0]?.week} to {progressSeries[progressSeries.length - 1]?.week}
         </span>
       </figcaption>
     </figure>
