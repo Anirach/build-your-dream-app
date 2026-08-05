@@ -10,6 +10,10 @@ import {
 } from "react";
 
 import { seedAuditEvents } from "./audit";
+import {
+  seedCorrectionRequests,
+  type CorrectionRequest,
+} from "./corrections";
 import { mappingRows } from "./mapping";
 import { gapAnalyses } from "./gaps";
 import { reviewQueue } from "./reviews";
@@ -57,7 +61,20 @@ interface DemoState {
   selectScenario: (id: string) => boolean;
   reviewStatuses: Record<string, ReviewQueueItem["status"]>;
   reassign: (id: string, reviewer: string) => boolean;
-  recordCorrection: (input: { objectRef: string; reason: string; traceId: string }) => boolean;
+  /** Multi-step correction workflow: request -> reviewer sign-off -> apply. */
+  correctionRequests: CorrectionRequest[];
+  requestCorrection: (input: {
+    objectRef: string;
+    objectType: string;
+    proposedChange: string;
+    reason: string;
+    traceId: string;
+  }) => CorrectionRequest | null;
+  signOffCorrection: (id: string, note: string) => boolean;
+  rejectCorrection: (id: string, note: string) => boolean;
+  applyCorrection: (id: string) => boolean;
+  /** Why the active actor cannot act on this request, beyond permissions. */
+  correctionBlocker: (request: CorrectionRequest, step: "signoff" | "apply") => string | null;
   /** Session-editable permission matrix and actor assignments. */
   permissionMatrix: PermissionMatrix;
   setRolePermission: (role: RoleId, permission: Permission, granted: boolean) => boolean;
@@ -98,6 +115,9 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   const [gapScenarios, setGapScenarios] = useState<GapScenario[]>([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [scenarioSeq, setScenarioSeq] = useState(0);
+  const [correctionRequests, setCorrectionRequests] =
+    useState<CorrectionRequest[]>(seedCorrectionRequests);
+  const [correctionSeq, setCorrectionSeq] = useState(41);
   const [permissionMatrix, setPermissionMatrix] = useState<PermissionMatrix>(baselineMatrix);
   const [roleAssignments, setRoleAssignments] = useState<Record<RoleId, string>>(() =>
     Object.fromEntries(
