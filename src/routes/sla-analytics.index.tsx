@@ -26,9 +26,10 @@ import {
 } from "@/components/app/primitives";
 import { StatusBadge } from "@/components/app/status";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { slaTargetHours } from "@/demo-data/correction-timeline";
 import { useDemoState } from "@/demo-data/store";
+import { mandateTypes, ruleFor } from "@/demo-data/signoff-rules";
 import {
+  applyConfiguredTargets,
   breachTone,
   byMandateType,
   byReviewerRole,
@@ -66,14 +67,17 @@ export const Route = createFileRoute("/sla-analytics/")({
 type Dimension = "mandate" | "role";
 
 function SlaAnalytics() {
-  const { correctionRequests } = useDemoState();
+  const { correctionRequests, signOffRules } = useDemoState();
   const [dimension, setDimension] = useState<Dimension>("mandate");
   const [stageFilter, setStageFilter] = useState<"all" | "Sign-off" | "Applied">("all");
 
   const records = useMemo(() => {
-    const all = [...slaHistory, ...liveSlaRecords(correctionRequests)];
+    const all = applyConfiguredTargets(
+      [...slaHistory, ...liveSlaRecords(correctionRequests)],
+      signOffRules,
+    );
     return stageFilter === "all" ? all : all.filter((r) => r.stage === stageFilter);
-  }, [correctionRequests, stageFilter]);
+  }, [correctionRequests, signOffRules, stageFilter]);
 
   const overall = overallSla(records);
   const stages = byStage(records);
@@ -81,6 +85,7 @@ function SlaAnalytics() {
     dimension === "mandate" ? byMandateType(records) : byReviewerRole(records);
   const trend = weeklyTrend(records);
   const liveCount = records.filter((r) => r.live).length;
+  const referenceTarget = Math.round(overall.targetHours * 10) / 10;
 
   const csv = [
     "dimension,label,hand_offs,breaches,breach_rate_pct,avg_hours,worst_hours",
@@ -102,7 +107,7 @@ function SlaAnalytics() {
       <PageHeader
         crumbs={[{ label: "Audit and Lineage", to: "/audit" }, { label: "SLA analytics" }]}
         title="SLA analytics"
-        subtitle="Turnaround performance for every correction hand-off, measured against a 24 hour reviewer sign-off target and an 8 hour apply target."
+        subtitle="Turnaround performance for every correction hand-off, measured against the sign-off and apply targets configured for each mandate type."
         primary={
           <DemoDownloadButton
             filename={`sla-analytics-by-${dimension}.csv`}
@@ -116,8 +121,14 @@ function SlaAnalytics() {
         <p className="font-semibold text-navy">Synthetic measurements</p>
         <p className="mt-0.5 text-muted-foreground">
           Six programme weeks of synthetic hand-offs ({slaHistory.length} records) plus {liveCount}{" "}
-          recorded in this session. Targets: sign-off {slaTargetHours["Sign-off"]}h, apply{" "}
-          {slaTargetHours.Applied}h.
+          recorded in this session. Configured targets (sign-off / apply):{" "}
+          {mandateTypes
+            .map((m) => {
+              const rule = ruleFor(signOffRules, m);
+              return `${m} ${rule.signOffTargetHours}h / ${rule.applyTargetHours}h`;
+            })
+            .join(" · ")}
+          . Edit them under Role Management.
         </p>
       </NoticeBanner>
 
@@ -237,7 +248,7 @@ function SlaAnalytics() {
                   />
                 </div>
                 <p className="tnum mt-1 text-xs text-muted-foreground">
-                  Avg {formatHours(s.avgHours)} · target {s.targetHours}h · worst{" "}
+                  Avg {formatHours(s.avgHours)} · avg target {Math.round(s.targetHours * 10) / 10}h · worst{" "}
                   {formatHours(s.worstHours)} · {s.count} hand-offs
                 </p>
               </li>
@@ -290,10 +301,10 @@ function SlaAnalytics() {
                 formatter={(value: number) => [`${Math.round(value * 10) / 10}h`, "Avg turnaround"]}
               />
               <ReferenceLine
-                y={slaTargetHours["Sign-off"]}
+                y={referenceTarget}
                 stroke="var(--destructive)"
                 strokeDasharray="4 3"
-                label={{ value: "24h target", position: "right", fontSize: 11 }}
+                label={{ value: `${referenceTarget}h avg target`, position: "right", fontSize: 11 }}
               />
               <Bar dataKey="avgHours" radius={[4, 4, 0, 0]}>
                 {groups.map((g) => (
