@@ -1758,6 +1758,8 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     setEvidenceRegister(seedEvidenceRegister);
     setEvidenceAttachments([]);
     setAttachmentSeq(1);
+    setRollbackRequests([]);
+    setRollbackSeq(1);
     setPacketAttestations({});
     setAcceptedPackets([]);
     setAcceptanceHistory([]);

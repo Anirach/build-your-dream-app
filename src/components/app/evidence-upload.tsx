@@ -2,7 +2,16 @@
 // Files are held in the browser session only for this mockup: nothing is
 // transmitted or stored, and attaching a file does not verify the artifact.
 import { useRef, useState } from "react";
-import { History as HistoryIcon, Paperclip, RotateCcw, Trash2, Upload } from "lucide-react";
+import {
+  Check,
+  History as HistoryIcon,
+  Hourglass,
+  Paperclip,
+  RotateCcw,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PermissionButton } from "@/components/app/permission";
@@ -28,6 +37,11 @@ import {
   type AttachmentKind,
   type EvidenceAttachment,
 } from "@/demo-data/evidence-uploads";
+import {
+  pendingRequestFor,
+  pendingRequestForLineage,
+  type EvidenceRollbackRequest,
+} from "@/demo-data/evidence-rollback";
 import { useDemoState } from "@/demo-data/store";
 
 export function EvidenceUploadPanel({
@@ -45,7 +59,9 @@ export function EvidenceUploadPanel({
     attachmentsFor,
     attachEvidenceFile,
     removeEvidenceAttachment,
-    rollbackEvidenceRevision,
+    requestEvidenceRollback,
+    decideEvidenceRollback,
+    evidenceRollbackRequests,
   } = useDemoState();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -272,7 +288,13 @@ export function EvidenceUploadPanel({
                   attachment={head}
                   artifactId={artifact.id}
                   onDetach={removeEvidenceAttachment}
-                  onRollback={rollbackEvidenceRevision}
+                  onRequestRollback={requestEvidenceRollback}
+                  onDecideRollback={decideEvidenceRollback}
+                  pendingRequest={pendingRequestFor(evidenceRollbackRequests, head.id)}
+                  lineagePending={pendingRequestForLineage(
+                    evidenceRollbackRequests,
+                    head.lineageId,
+                  )}
                 />
                 {history.length > 0 && (
                   <>
@@ -300,7 +322,13 @@ export function EvidenceUploadPanel({
                               attachment={a}
                               artifactId={artifact.id}
                               onDetach={removeEvidenceAttachment}
-                              onRollback={rollbackEvidenceRevision}
+                              onRequestRollback={requestEvidenceRollback}
+                              onDecideRollback={decideEvidenceRollback}
+                              pendingRequest={pendingRequestFor(evidenceRollbackRequests, a.id)}
+                              lineagePending={pendingRequestForLineage(
+                                evidenceRollbackRequests,
+                                a.lineageId,
+                              )}
                             />
                           </li>
                         ))}
@@ -321,12 +349,20 @@ function RevisionRow({
   attachment: a,
   artifactId,
   onDetach,
-  onRollback,
+  onRequestRollback,
+  onDecideRollback,
+  pendingRequest,
+  lineagePending,
 }: {
   attachment: EvidenceAttachment;
   artifactId: string;
   onDetach: (id: string, reason: string) => boolean;
-  onRollback: (id: string, reason: string) => boolean;
+  onRequestRollback: (id: string, reason: string) => boolean;
+  onDecideRollback: (requestId: string, approve: boolean, note: string) => boolean;
+  /** Open request naming this revision as the one to reinstate. */
+  pendingRequest?: EvidenceRollbackRequest;
+  /** Any open request on this lineage, which blocks a second request. */
+  lineagePending?: EvidenceRollbackRequest;
 }) {
   return (
     <div className="flex items-start justify-between gap-2">
