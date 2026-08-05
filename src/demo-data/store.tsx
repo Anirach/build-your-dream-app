@@ -17,6 +17,13 @@ import {
   type EvidenceState,
 } from "./evidence-register";
 import {
+  placeholderChecksum,
+  validateEvidenceFile,
+  formatBytes,
+  type AttachmentKind,
+  type EvidenceAttachment,
+} from "./evidence-uploads";
+import {
   activePacket,
   packetById,
   type PacketId,
@@ -213,6 +220,18 @@ interface DemoState {
     note: string,
     reference?: string,
   ) => boolean;
+  /** Session-held evidence files, newest first, keyed by artifact. */
+  evidenceAttachments: EvidenceAttachment[];
+  attachmentsFor: (artifactId: string) => EvidenceAttachment[];
+  attachEvidenceFile: (input: {
+    artifactId: string;
+    file: File;
+    kind: AttachmentKind;
+    linkedState: EvidenceState;
+    reference: string;
+    note: string;
+  }) => EvidenceAttachment | null;
+  removeEvidenceAttachment: (attachmentId: string, reason: string) => boolean;
   requestPacketAttestation: (packetId: PacketId) => boolean;
   packetAttestations: Partial<Record<PacketId, PacketAttestation>>;
   attestPacket: (packetId: PacketId, reason: string) => boolean;
@@ -290,6 +309,8 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   const [acceptanceHistory, setAcceptanceHistory] = useState<PacketAcceptanceRecord[]>([]);
   const [reviewPackages, setReviewPackages] =
     useState<ReviewPackageView[]>(seedReviewPackages);
+  const [evidenceAttachments, setEvidenceAttachments] = useState<EvidenceAttachment[]>([]);
+  const [attachmentSeq, setAttachmentSeq] = useState(1);
 
   const actor = roleAssignments[role] ?? actorFor(role);
 
