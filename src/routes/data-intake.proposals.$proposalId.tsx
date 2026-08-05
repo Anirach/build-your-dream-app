@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { SyntheticIntakeWarning } from "@/components/app/intake";
+import { ProposalActivityFeed } from "@/components/app/intake-activity";
 import { PageHeader } from "@/components/app/page-header";
 import { PermissionButton, RoleAccessNotice } from "@/components/app/permission";
 import { EmptyState, KeyValue, SectionCard } from "@/components/app/primitives";
@@ -226,6 +227,8 @@ function ProposalPage() {
             </div>
           </SectionCard>
         )}
+
+        <ProposalActivityFeed proposalId={proposal.id} />
       </div>
     </div>
   );
