@@ -312,10 +312,18 @@ function SlaAnalytics() {
               <dt>Hollow dot = fewer than {minReliableSample} hand-offs that week</dt>
             </div>
           </dl>
-          <ul className="tnum mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <ul className="mt-2 flex flex-wrap gap-2">
             {trend.map((t) => (
-              <li key={t.week} className={t.count < minReliableSample ? "text-warning" : undefined}>
-                {t.week} n={t.count}
+              <li key={t.week}>
+                <span
+                  className={
+                    t.count < minReliableSample
+                      ? "tnum inline-flex rounded-md border border-warning/30 bg-warning-surface px-2 py-0.5 text-xs text-warning"
+                      : "tnum inline-flex rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground"
+                  }
+                >
+                  {t.week} · n={t.count}
+                </span>
               </li>
             ))}
           </ul>
@@ -432,18 +440,6 @@ function SlaAnalytics() {
                 strokeDasharray="4 3"
                 label={{ value: `${referenceTarget}h avg target`, position: "right", fontSize: 11 }}
               />
-              <defs>
-                <pattern
-                  id="sla-thin-sample"
-                  patternUnits="userSpaceOnUse"
-                  width={6}
-                  height={6}
-                  patternTransform="rotate(45)"
-                >
-                  <rect width={6} height={6} fill="var(--card)" />
-                  <line x1={0} y1={0} x2={0} y2={6} stroke="currentColor" strokeWidth={3} />
-                </pattern>
-              </defs>
               <Bar dataKey="avgHours" radius={[4, 4, 0, 0]} cursor="pointer">
                 {groups.map((g) => (
                   <Cell
