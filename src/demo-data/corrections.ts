@@ -54,7 +54,7 @@ export const correctionStages = [
   {
     key: "Sign-off" as const,
     label: "Reviewer sign-off",
-    help: "A reviewer or auditor who did not raise the request countersigns it. Segregation of duties is enforced.",
+    help: "The mandate's configured rule decides how many countersignatures are needed and which roles may give them.",
   },
   {
     key: "Applied" as const,
