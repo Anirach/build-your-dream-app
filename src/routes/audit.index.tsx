@@ -481,7 +481,9 @@ function Page() {
             />
           ) : (
             <ul className="space-y-4">
-              {correctionRequests.map((r) => (
+              {correctionRequests.map((r) => {
+                const sla = slaSummary(r, nowMs);
+                return (
                 <li key={r.id} className="rounded-lg border border-border px-4 py-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -495,6 +497,7 @@ function Page() {
                             r.signOffs.length >= r.rule.requiredApprovals ? "success" : "warning"
                           }
                         />
+                        <StatusBadge label={sla.label} tone={sla.tone} />
                       </div>
                       <p className="mt-1.5 text-sm font-semibold text-navy">{r.proposedChange}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
@@ -526,16 +529,16 @@ function Page() {
                               : r.signOffs.map((s) => `${s.actor} (${s.role})`).join("; "),
                         },
                         { label: "Applied by", value: r.appliedBy ?? "Not applied" },
+                        {
+                          label: "Turnaround",
+                          value:
+                            sla.totalMs === null
+                              ? "Not available"
+                              : `${formatDuration(sla.totalMs)} since raised · targets: sign-off ${slaTargetHours["Sign-off"]}h, apply ${slaTargetHours.Applied}h`,
+                        },
                       ]}
                     />
-                    <ol className="mt-3 space-y-1.5 border-t border-border pt-3">
-                      {r.history.map((h, i) => (
-                        <li key={`${r.id}-${i}`} className="text-xs text-muted-foreground">
-                          <span className="font-semibold text-navy">{h.stage}</span> · {h.actor} (
-                          {h.role}) · {h.at} · {h.note}
-                        </li>
-                      ))}
-                    </ol>
+                    <CorrectionTimeline request={r} nowMs={nowMs} />
                   </div>
 
                   {(r.status === "Awaiting sign-off" || r.status === "Signed off") && (
