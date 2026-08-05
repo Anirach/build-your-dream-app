@@ -121,6 +121,10 @@ function Page() {
         }
       />
 
+      <div className="mb-4">
+        <RoleAccessNotice permissions={["review.reassign", "review.complete"]} />
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Awaiting review"
