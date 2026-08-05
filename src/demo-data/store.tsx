@@ -74,6 +74,9 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     () => Object.fromEntries(reviewQueue.map((r) => [r.id, r.status] as const)),
   );
   const [seq, setSeq] = useState(2100);
+  const [gapScenarios, setGapScenarios] = useState<GapScenario[]>([]);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
+  const [scenarioSeq, setScenarioSeq] = useState(0);
 
   const pushEvent = useCallback(
     (event: Omit<AuditEventView, "id" | "timestamp">) => {
