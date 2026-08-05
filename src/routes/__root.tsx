@@ -4,6 +4,8 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useNavigate,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -150,6 +152,15 @@ function RootComponent() {
 /** Simulated session gate: shows the login screen until a sample role signs in. */
 function SessionGate() {
   const { signedIn } = useDemoState();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    if (!signedIn && pathname !== "/login") {
+      void navigate({ to: "/login", replace: true });
+    }
+  }, [signedIn, pathname, navigate]);
+
   if (!signedIn) return <LoginScreen />;
   return (
     <AppShell>
