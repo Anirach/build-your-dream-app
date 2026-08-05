@@ -202,7 +202,8 @@ function SlaAnalytics() {
       </div>
 
       {(quality.smallGroups > 0 || thinWeeks.length > 0 || overallSample.tier !== "reliable") && (
-        <NoticeBanner tone="warning" className="mt-4">
+        <div className="mt-4">
+        <NoticeBanner tone="warning">
           <p className="font-semibold text-navy">Small-sample caution</p>
           <p className="mt-0.5 text-muted-foreground">
             {overallSample.tier !== "reliable" && `${overallSample.note} `}
@@ -214,6 +215,7 @@ function SlaAnalytics() {
             only.
           </p>
         </NoticeBanner>
+        </div>
       )}
 
       <SlaDrillDownSheet
