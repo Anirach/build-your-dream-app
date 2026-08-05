@@ -166,6 +166,12 @@ function WorkbenchPage() {
         }
       />
 
+      <div className="mb-4">
+        <RoleAccessNotice
+          permissions={["mapping.approve", "mapping.edit", "mapping.reject", "review.complete"]}
+        />
+      </div>
+
       <SectionCard
         title="Run configuration"
         description="Synthetic documents only. No external service is called."
