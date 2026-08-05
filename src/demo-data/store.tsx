@@ -131,6 +131,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   const [correctionRequests, setCorrectionRequests] =
     useState<CorrectionRequest[]>(seedCorrectionRequests);
   const [correctionSeq, setCorrectionSeq] = useState(41);
+  const [signOffRules, setSignOffRules] = useState<SignOffRuleSet>(baselineSignOffRules);
   const [permissionMatrix, setPermissionMatrix] = useState<PermissionMatrix>(baselineMatrix);
   const [roleAssignments, setRoleAssignments] = useState<Record<RoleId, string>>(() =>
     Object.fromEntries(
@@ -330,21 +331,25 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   );
 
   const requestCorrection = useCallback<DemoState["requestCorrection"]>(
-    ({ objectRef, objectType, proposedChange, reason, traceId }) => {
+    ({ objectRef, objectType, mandateType, proposedChange, reason, traceId }) => {
       if (!authorise("correction.request", "Correction request", objectRef)) return null;
       const n = correctionSeq + 1;
       setCorrectionSeq(n);
       const at = now();
+      const rule = ruleFor(signOffRules, mandateType);
       const request: CorrectionRequest = {
         id: `COR-${String(n).padStart(4, "0")}`,
         objectRef,
         objectType,
+        mandateType,
+        rule: { ...rule, requiredRoles: [...rule.requiredRoles] },
         traceId,
         proposedChange,
         reason,
         status: "Awaiting sign-off",
         requestedBy: actor,
         requestedAt: at,
+        signOffs: [],
         history: [
           { stage: "Requested", actor, role: roleName(role), at, note: reason },
         ],
@@ -356,35 +361,43 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
         action: "Raised correction request for sign-off",
         objectType: "Correction request",
         objectRef: `${request.id} (${objectRef})`,
-        beforeAfter: "no change yet -> awaiting reviewer sign-off",
-        reason,
+        beforeAfter: `no change yet -> awaiting ${rule.requiredApprovals} sign-off${rule.requiredApprovals === 1 ? "" : "s"}`,
+        reason: `${reason} (rule for ${mandateType}: ${ruleSummary(rule)})`,
         traceId,
       });
       return request;
     },
-    [actor, authorise, correctionSeq, pushEvent, role],
+    [actor, authorise, correctionSeq, pushEvent, role, signOffRules],
   );
 
   /**
-   * Segregation of duties: the actor who raised a request may not countersign
-   * it, and a request may only be applied once it has been signed off.
+   * Rule-driven gate. The mandate's sign-off rule decides which roles may
+   * countersign, how many countersignatures are needed and whether the raiser
+   * is excluded by segregation of duties.
    */
   const correctionBlocker = useCallback<DemoState["correctionBlocker"]>(
     (request, step) => {
+      const rule = request.rule;
       if (step === "signoff") {
         if (request.status !== "Awaiting sign-off")
           return `${request.id} is already ${request.status.toLowerCase()}.`;
-        if (request.requestedBy === actor)
-          return `Segregation of duties: ${actor} raised ${request.id} and cannot sign it off. Switch role to a different reviewer or auditor.`;
+        if (rule.segregationOfDuties && request.requestedBy === actor)
+          return `Segregation of duties: ${actor} raised ${request.id} and cannot sign it off. Switch to a different reviewer or auditor.`;
+        if (rule.requiredRoles.length > 0 && !rule.requiredRoles.includes(role))
+          return `The ${request.mandateType} rule allows sign-off only by ${rule.requiredRoles
+            .map(roleName)
+            .join(" or ")}.`;
+        if (request.signOffs.some((s) => s.actor === actor))
+          return `${actor} has already countersigned ${request.id}. A different authorised reviewer must give sign-off ${request.signOffs.length + 1} of ${rule.requiredApprovals}.`;
         return null;
       }
       if (request.status === "Awaiting sign-off")
-        return `${request.id} needs reviewer sign-off before it can be applied.`;
+        return `${request.id} has ${request.signOffs.length} of ${rule.requiredApprovals} required sign-offs.`;
       if (request.status !== "Signed off")
         return `${request.id} is already ${request.status.toLowerCase()}.`;
       return null;
     },
-    [actor],
+    [actor, role],
   );
 
   const decideCorrection = useCallback(
@@ -394,13 +407,28 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       if (!authorise("correction.signoff", "Correction request", id)) return false;
       if (correctionBlocker(request, "signoff")) return false;
       const at = now();
+      const required = request.rule.requiredApprovals;
+      const signOffCount = request.signOffs.length + 1;
+      const complete = signOffCount >= required;
       setCorrectionRequests((prev) =>
         prev.map((r) =>
           r.id === id
             ? {
                 ...r,
-                status: approve ? "Signed off" : "Rejected",
-                ...(approve ? { signedOffBy: actor } : {}),
+                status: approve
+                  ? complete
+                    ? ("Signed off" as const)
+                    : ("Awaiting sign-off" as const)
+                  : ("Rejected" as const),
+                ...(approve
+                  ? {
+                      signedOffBy: actor,
+                      signOffs: [
+                        ...r.signOffs,
+                        { actor, role: roleName(role), at, note },
+                      ],
+                    }
+                  : {}),
                 history: [
                   ...r.history,
                   {
@@ -408,7 +436,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
                     actor,
                     role: roleName(role),
                     at,
-                    note,
+                    note: approve ? `Sign-off ${signOffCount} of ${required}: ${note}` : note,
                   },
                 ],
               }
@@ -418,10 +446,14 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       pushEvent({
         actor,
         actorType: "Human",
-        action: approve ? "Signed off correction request" : "Rejected correction request",
+        action: approve
+          ? `Recorded sign-off ${signOffCount} of ${required} on correction request`
+          : "Rejected correction request",
         objectType: "Correction request",
         objectRef: `${request.id} (${request.objectRef})`,
-        beforeAfter: `Awaiting sign-off -> ${approve ? "Signed off" : "Rejected"}`,
+        beforeAfter: `Awaiting sign-off -> ${
+          approve ? (complete ? "Signed off" : `awaiting ${required - signOffCount} more`) : "Rejected"
+        }`,
         reason: note,
         traceId: request.traceId,
       });
