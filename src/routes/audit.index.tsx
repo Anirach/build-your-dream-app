@@ -121,6 +121,7 @@ function Page() {
     rejectCorrection,
     applyCorrection,
     correctionBlocker,
+    signOffRules,
   } = useDemoState();
   const [actor, setActor] = useState<ActorFilter>("All");
   const [query, setQuery] = useState("");
@@ -130,7 +131,10 @@ function Page() {
     "Reassign the entry to the correct module",
   );
   const [correctionReason, setCorrectionReason] = useState("");
+  const [mandateType, setMandateType] = useState<MandateType>("Audit event");
   const [notes, setNotes] = useState<Record<string, string>>({});
+
+  const activeRule = ruleFor(signOffRules, mandateType);
 
   const pendingSignOff = correctionRequests.filter((r) => r.status === "Awaiting sign-off").length;
   const awaitingApply = correctionRequests.filter((r) => r.status === "Signed off").length;
@@ -295,6 +299,35 @@ function Page() {
             <div className="space-y-1.5">
               <label
                 className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+                htmlFor="correction-mandate"
+              >
+                Mandate type
+              </label>
+              <Select
+                value={mandateType}
+                onValueChange={(v) => setMandateType(v as MandateType)}
+              >
+                <SelectTrigger id="correction-mandate" aria-label="Mandate type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {mandateTypes.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Sign-off rule: {ruleSummary(activeRule)}.{" "}
+                <Link to="/roles" className="text-primary underline-offset-4 hover:underline">
+                  Configure rules
+                </Link>
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <label
+                className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
                 htmlFor="correction-ref"
               >
                 Object reference to correct
@@ -347,7 +380,8 @@ function Page() {
                 onClick={() => {
                   const created = requestCorrection({
                     objectRef: correctionRef.trim(),
-                    objectType: "Audit event",
+                    objectType: mandateType,
+                    mandateType,
                     proposedChange: correctionChange.trim(),
                     reason: correctionReason.trim(),
                     traceId: correctionTrace,
@@ -355,8 +389,7 @@ function Page() {
                   if (created) {
                     setCorrectionReason("");
                     toast.success(`${created.id} submitted for sign-off`, {
-                      description:
-                        "Nothing has changed yet. A reviewer other than you must countersign before the reversal is appended.",
+                      description: `Nothing has changed yet. Rule for ${mandateType}: ${ruleSummary(created.rule)}.`,
                     });
                   }
                 }}
