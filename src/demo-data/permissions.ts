@@ -27,6 +27,7 @@ export type Permission =
   | "readiness.update"
   | "readiness.accept"
   | "evidence.rollback"
+  | "evidence.rollback.approve"
   | "knowledge.qa"
   | "review.package";
 
@@ -52,7 +53,9 @@ export const permissionLabels: Record<Permission, string> = {
   "readiness.view": "View the production readiness roadmap, gates and evidence register",
   "readiness.update": "Record references, request attestations and attest readiness of inputs",
   "readiness.accept": "Accept a delivery packet against its acceptance gate",
-  "evidence.rollback": "Roll an evidence lineage back to an earlier revision",
+  "evidence.rollback": "Request a rollback of an evidence lineage to an earlier revision",
+  "evidence.rollback.approve":
+    "Approve or reject an evidence rollback request before it is applied",
   "knowledge.qa": "Review corpus, citation and retrieval quality gates",
   "review.package": "Act on governed review packages and import validation outcomes",
 };
@@ -79,6 +82,7 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "readiness.update",
     "readiness.accept",
     "evidence.rollback",
+    "evidence.rollback.approve",
   ],
   lead: [
     "gap.return",
