@@ -1454,6 +1454,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   );
 
   const requestPacketAttestation = useCallback<DemoState["requestPacketAttestation"]>(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (packetId) => {
       const packet = packetById(packetId);
       if (!packet) return false;
