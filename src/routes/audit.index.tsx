@@ -26,6 +26,20 @@ import {
   type CorrectionRequest,
 } from "@/demo-data/corrections";
 import { useDemoState } from "@/demo-data/store";
+import {
+  mandateTypes,
+  ruleFor,
+  ruleSummary,
+  type MandateType,
+} from "@/demo-data/signoff-rules";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Link } from "@tanstack/react-router";
 import type { AuditEventView } from "@/demo-data/types";
 import { cn } from "@/lib/utils";
 
@@ -64,11 +78,14 @@ const actorMeta: Record<
 function Stepper({ request }: { request: CorrectionRequest }) {
   const reached = stageIndex(request.status);
   const rejected = request.status === "Rejected";
+  const required = request.rule.requiredApprovals;
   return (
     <ol className="mt-3 flex flex-wrap items-center gap-2">
       {correctionStages.map((s, i) => {
         const done = !rejected && (i < reached || request.status === "Applied");
         const current = !rejected && i === reached && request.status !== "Applied";
+        const label =
+          s.key === "Sign-off" ? `${s.label} (${request.signOffs.length}/${required})` : s.label;
         return (
           <li key={s.key} className="flex items-center gap-2">
             <span
@@ -79,7 +96,7 @@ function Stepper({ request }: { request: CorrectionRequest }) {
                 !done && !current && "border-border bg-secondary text-muted-foreground",
               )}
             >
-              {done ? <Check className="size-3.5 shrink-0" aria-hidden /> : `${i + 1}.`} {s.label}
+              {done ? <Check className="size-3.5 shrink-0" aria-hidden /> : `${i + 1}.`} {label}
             </span>
             {i < correctionStages.length - 1 && (
               <span className="text-xs text-muted-foreground" aria-hidden>
