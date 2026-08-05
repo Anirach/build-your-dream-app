@@ -411,14 +411,14 @@ function RevisionRow({
             Open
           </a>
         )}
-        {a.status === "Superseded" && (
+        {a.status === "Superseded" && !pendingRequest && !lineagePending && (
           <PermissionButton
             permission="evidence.rollback"
             variant="outline"
             size="sm"
             onClick={() => {
               const reason = window.prompt(
-                `Why is revision r${a.revision} being made current again?`,
+                `Why should revision r${a.revision} be made current again? A Programme Management Office approver must confirm before it applies.`,
                 "",
               );
               if (reason === null) return;
@@ -426,16 +426,86 @@ function RevisionRow({
                 toast.error("A rollback reason is required");
                 return;
               }
-              if (onRollback(a.id, reason.trim())) {
-                toast.success(`${a.id} (r${a.revision}) is current again`, {
-                  description: "Every revision stays in the lineage and the rollback is audited.",
+              if (onRequestRollback(a.id, reason.trim())) {
+                toast.success(`Rollback of ${a.id} (r${a.revision}) requested`, {
+                  description:
+                    "Nothing changed yet — a Programme Management Office approver must confirm.",
                 });
               }
             }}
           >
             <RotateCcw className="size-3.5" aria-hidden />
-            Make current
+            Request rollback
           </PermissionButton>
+        )}
+        {a.status === "Superseded" && !pendingRequest && lineagePending && (
+          <p className="max-w-[10rem] text-right text-xs text-muted-foreground">
+            Rollback to r{lineagePending.revision} is awaiting approval on this lineage.
+          </p>
+        )}
+        {pendingRequest && (
+          <div className="flex flex-col items-end gap-1">
+            <StatusBadge
+              label={`${pendingRequest.id} · awaiting PMO approval`}
+              tone="warning"
+              icon={<Hourglass className="size-3" aria-hidden />}
+            />
+            <p className="max-w-[12rem] text-right text-xs text-muted-foreground">
+              Requested by {pendingRequest.requestedBy} · {pendingRequest.requestedAt} ·{" "}
+              {pendingRequest.reason}
+            </p>
+            <div className="flex gap-1">
+              <PermissionButton
+                permission="evidence.rollback.approve"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const note = window.prompt(
+                    `Approval note for rollback to r${a.revision}?`,
+                    "",
+                  );
+                  if (note === null) return;
+                  if (!note.trim()) {
+                    toast.error("An approval note is required");
+                    return;
+                  }
+                  if (onDecideRollback(pendingRequest.id, true, note.trim())) {
+                    toast.success(`${a.id} (r${a.revision}) is current again`, {
+                      description:
+                        "Every revision stays in the lineage and both steps are audited.",
+                    });
+                  }
+                }}
+              >
+                <Check className="size-3.5" aria-hidden />
+                Approve
+              </PermissionButton>
+              <PermissionButton
+                permission="evidence.rollback.approve"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const note = window.prompt(
+                    `Why is the rollback to r${a.revision} rejected?`,
+                    "",
+                  );
+                  if (note === null) return;
+                  if (!note.trim()) {
+                    toast.error("A rejection reason is required");
+                    return;
+                  }
+                  if (onDecideRollback(pendingRequest.id, false, note.trim())) {
+                    toast.success(`Rollback request ${pendingRequest.id} rejected`, {
+                      description: "The current revision is unchanged.",
+                    });
+                  }
+                }}
+              >
+                <X className="size-3.5" aria-hidden />
+                Reject
+              </PermissionButton>
+            </div>
+          </div>
         )}
         <PermissionButton
           permission="readiness.update"
