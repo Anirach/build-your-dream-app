@@ -112,11 +112,14 @@ function SlaAnalytics() {
         }
       />
 
-      <NoticeBanner
-        tone="info"
-        title="Synthetic measurements"
-        description={`Six programme weeks of synthetic hand-offs (${slaHistory.length} records) plus ${liveCount} hand-off(s) recorded in this session. Targets: sign-off ${slaTargetHours["Sign-off"]}h, apply ${slaTargetHours.Applied}h.`}
-      />
+      <NoticeBanner tone="info">
+        <p className="font-semibold text-navy">Synthetic measurements</p>
+        <p className="mt-0.5 text-muted-foreground">
+          Six programme weeks of synthetic hand-offs ({slaHistory.length} records) plus {liveCount}{" "}
+          recorded in this session. Targets: sign-off {slaTargetHours["Sign-off"]}h, apply{" "}
+          {slaTargetHours.Applied}h.
+        </p>
+      </NoticeBanner>
 
       <div className="mt-6 grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -220,7 +223,7 @@ function SlaAnalytics() {
             segments={stages.map((s) => ({
               label: s.label,
               value: s.count,
-              className: s.key === "Sign-off" ? "bg-primary" : "bg-clinical-teal",
+              className: s.key === "Sign-off" ? "bg-primary" : "bg-teal",
             }))}
           />
           <ul className="mt-4 space-y-3">
@@ -300,7 +303,7 @@ function SlaAnalytics() {
                       breachTone(g.breachRate) === "danger"
                         ? "var(--destructive)"
                         : breachTone(g.breachRate) === "warning"
-                          ? "var(--warning, oklch(0.75 0.15 75))"
+                          ? "var(--warning)"
                           : "var(--primary)"
                     }
                   />
