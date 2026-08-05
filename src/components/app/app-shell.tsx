@@ -46,6 +46,7 @@ import { modules } from "@/demo-data/modules";
 import { roles } from "@/demo-data/people";
 import { standards } from "@/demo-data/standards";
 import { useDemoState } from "@/demo-data/store";
+import { roleCanView, roleNavAccess } from "@/components/app/nav-access";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -61,10 +62,6 @@ const navItems = [
   { to: "/roles", label: "Role Management", icon: ShieldCheck },
 ];
 
-const mobileNav = navItems.filter((n) =>
-  ["/", "/programme", "/reviews", "/gap-analysis"].includes(n.to),
-);
-
 function useActivePath() {
   return useRouterState({ select: (s) => s.location.pathname });
 }
@@ -78,10 +75,11 @@ function NavList({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: (
   const pathname = useActivePath();
   const { role } = useDemoState();
   const emphasis = roles.find((r) => r.id === role)?.emphasis ?? [];
+  const allowed = navItems.filter((item) => roleNavAccess[role].includes(item.to));
 
   return (
     <nav aria-label="Primary" className="flex flex-1 flex-col gap-1 px-3">
-      {navItems.map((item) => {
+      {allowed.map((item) => {
         const active = isActive(pathname, item.to);
         const highlighted = emphasis.some((e) => e.startsWith(item.to) && item.to !== "/");
         return (
