@@ -276,18 +276,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               Concept Mockup - Synthetic Data
             </span>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden gap-2 sm:flex"
-              onClick={() => {
-                signOut();
-                toast.info("Signed out", { description: "Pick another sample role to continue." });
-              }}
-            >
-              <LogOut className="size-4" aria-hidden /> Log out
-            </Button>
-
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative" aria-label="Notifications (4 synthetic)">
@@ -384,6 +372,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden gap-2 sm:flex"
+              onClick={() => {
+                signOut();
+                toast.info("Signed out", { description: "Pick another sample role to continue." });
+              }}
+            >
+              <LogOut className="size-4" aria-hidden /> Log out
+            </Button>
           </div>
         </div>
         <div className="border-t border-border bg-warning-surface px-4 py-1 text-center text-[11px] font-semibold text-warning md:hidden">
