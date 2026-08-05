@@ -30,7 +30,7 @@ import {
   buildTimeline,
   formatDuration,
   slaSummary,
-  slaTargetHours,
+  requestTargets,
 } from "@/demo-data/correction-timeline";
 import {
   mandateTypes,
@@ -534,7 +534,7 @@ function Page() {
                           value:
                             sla.totalMs === null
                               ? "Not available"
-                              : `${formatDuration(sla.totalMs)} since raised · targets: sign-off ${slaTargetHours["Sign-off"]}h, apply ${slaTargetHours.Applied}h`,
+                              : `${formatDuration(sla.totalMs)} since raised · targets: sign-off ${requestTargets(r)["Sign-off"]}h, apply ${requestTargets(r).Applied}h`,
                         },
                       ]}
                     />
