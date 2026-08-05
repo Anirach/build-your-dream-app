@@ -2,6 +2,7 @@
 // same "3 Aug 2026, 16:40" strings the demo store writes, so they are parsed
 // back into dates locally rather than fetched from anywhere.
 import type { CorrectionRequest, CorrectionStep } from "./corrections";
+import { targetHoursFor } from "./signoff-rules";
 
 const MONTHS = [
   "jan", "feb", "mar", "apr", "may", "jun",
@@ -35,11 +36,19 @@ export function formatDuration(ms: number): string {
   return rHours === 0 ? `${days}d` : `${days}d ${rHours}h`;
 }
 
-/** Synthetic turnaround targets, in hours, for each hand-off. */
+/** Fallback turnaround targets, in hours, when a request carries no rule snapshot. */
 export const slaTargetHours: Record<"Sign-off" | "Applied", number> = {
   "Sign-off": 24,
   Applied: 8,
 };
+
+/** Targets for one request, taken from the rule snapshotted when it was raised. */
+export function requestTargets(request: CorrectionRequest) {
+  return {
+    "Sign-off": request.rule ? targetHoursFor(request.rule, "Sign-off") : slaTargetHours["Sign-off"],
+    Applied: request.rule ? targetHoursFor(request.rule, "Applied") : slaTargetHours.Applied,
+  };
+}
 
 export type SlaTone = "success" | "warning" | "danger" | "neutral";
 
@@ -70,14 +79,15 @@ function tone(elapsedMs: number | null, targetHours: number | null): SlaTone {
 export function buildTimeline(request: CorrectionRequest, nowMs: number): TimelineRow[] {
   const rows: TimelineRow[] = [];
   let prev: number | null = null;
+  const targets = requestTargets(request);
 
   request.history.forEach((h, i) => {
     const at = parseStamp(h.at);
     const target =
       h.stage === "Sign-off"
-        ? slaTargetHours["Sign-off"]
+        ? targets["Sign-off"]
         : h.stage === "Applied"
-          ? slaTargetHours.Applied
+          ? targets.Applied
           : null;
     const elapsedMs = at && prev !== null ? at.getTime() - prev : null;
     rows.push({
@@ -105,7 +115,7 @@ export function buildTimeline(request: CorrectionRequest, nowMs: number): Timeli
 
   if (request.status === "Awaiting sign-off" || request.status === "Signed off") {
     const stage = request.status === "Awaiting sign-off" ? "Sign-off" : "Applied";
-    const target = slaTargetHours[stage];
+    const target = targets[stage];
     const elapsedMs = prev === null ? null : nowMs - prev;
     rows.push({
       key: `${request.id}-pending`,
