@@ -691,6 +691,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   );
 
   const resetDemo = useCallback(() => {
+    void 0;
     setPermissionMatrix(baselineMatrix());
     setSignOffRules(baselineSignOffRules());
     setRoleAssignments(
@@ -710,6 +711,15 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       Object.fromEntries(gapAnalyses.flatMap((g) => g.rows.map((r) => [r.id, r.reviewStatus] as const))),
     );
     setReviewStatuses(Object.fromEntries(reviewQueue.map((r) => [r.id, r.status] as const)));
+    setActiveModules(modules);
+    setIntakeRecords(seedIntakeRecords);
+    setIntakeSeq(3);
+    setLedger(seedLedger);
+    setLedgerSeq(91);
+    setReceipts(seedReceipts);
+    setReceiptSeq(42);
+    setProposals(seedProposals);
+    setProposalSeq(7);
   }, []);
 
   const value = useMemo<DemoState>(
