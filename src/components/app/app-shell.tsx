@@ -46,6 +46,7 @@ import { modules } from "@/demo-data/modules";
 import { roles } from "@/demo-data/people";
 import { standards } from "@/demo-data/standards";
 import { useDemoState } from "@/demo-data/store";
+import { roleCanView, roleNavAccess } from "@/components/app/nav-access";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -61,10 +62,6 @@ const navItems = [
   { to: "/roles", label: "Role Management", icon: ShieldCheck },
 ];
 
-const mobileNav = navItems.filter((n) =>
-  ["/", "/programme", "/reviews", "/gap-analysis"].includes(n.to),
-);
-
 function useActivePath() {
   return useRouterState({ select: (s) => s.location.pathname });
 }
@@ -78,10 +75,11 @@ function NavList({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: (
   const pathname = useActivePath();
   const { role } = useDemoState();
   const emphasis = roles.find((r) => r.id === role)?.emphasis ?? [];
+  const allowed = navItems.filter((item) => roleNavAccess[role].includes(item.to));
 
   return (
     <nav aria-label="Primary" className="flex flex-1 flex-col gap-1 px-3">
-      {navItems.map((item) => {
+      {allowed.map((item) => {
         const active = isActive(pathname, item.to);
         const highlighted = emphasis.some((e) => e.startsWith(item.to) && item.to !== "/");
         return (
@@ -193,6 +191,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useActivePath();
   const { role, setRole, resetDemo, actor, signOut } = useDemoState();
   const activeRole = roles.find((r) => r.id === role) ?? roles[3]!;
+  const mobileNav = navItems
+    .filter((item) => roleNavAccess[role].includes(item.to))
+    .slice(0, 4);
+  const authorisedHere = roleCanView(role, pathname);
+  const homeFor = roles.find((r) => r.id === role)?.landing ?? "/";
   const initials = actor
     .replace(/^Dr\.\s*/, "")
     .split(" ")
@@ -272,6 +275,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="hidden items-center gap-1.5 rounded-md border border-warning/30 bg-warning-surface px-2.5 py-1 text-[11px] font-semibold text-warning md:inline-flex">
               Concept Mockup - Synthetic Data
             </span>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden gap-2 sm:flex"
+              onClick={() => {
+                signOut();
+                toast.info("Signed out", { description: "Pick another sample role to continue." });
+              }}
+            >
+              <LogOut className="size-4" aria-hidden /> Log out
+            </Button>
 
             <Popover>
               <PopoverTrigger asChild>
@@ -412,7 +427,36 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <main id="main" className="min-w-0 flex-1 pb-24 lg:pb-0">
           <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-5 lg:px-8 lg:py-8">
-            {children}
+            {authorisedHere ? (
+              children
+            ) : (
+              <div className="mx-auto max-w-xl rounded-xl border border-warning/30 bg-warning-surface p-6 text-center">
+                <ShieldCheck className="mx-auto size-6 text-warning" aria-hidden />
+                <h1 className="mt-3 text-lg font-semibold text-navy">
+                  This screen is outside your mandate
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {activeRole.name} does not have access to {pathname}. The attempt is recorded in
+                  the audit trail. Switch role from the profile menu or return to your home screen.
+                </p>
+                <div className="mt-4 flex justify-center gap-2">
+                  <Button asChild size="sm">
+                    <Link to={homeFor}>Go to my home screen</Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      signOut();
+                      toast.info("Signed out");
+                    }}
+                  >
+                    <LogOut className="size-4" aria-hidden /> Log out
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           <footer className="border-t border-border px-4 py-6 text-center text-xs text-muted-foreground sm:px-5 lg:px-8">
             <p>BDMS Confidential | Concept mockup using synthetic data | Not clinical guidance</p>
