@@ -16,7 +16,12 @@ import { Switch } from "@/components/ui/switch";
 import { Toggle } from "@/components/ui/toggle";
 import { roles } from "@/demo-data/people";
 import { useDemoState } from "@/demo-data/store";
-import { mandateTypes, ruleSummary } from "@/demo-data/signoff-rules";
+import {
+  applyTargetOptions,
+  mandateTypes,
+  ruleSummary,
+  signOffTargetOptions,
+} from "@/demo-data/signoff-rules";
 import type { RoleId } from "@/demo-data/types";
 
 export function SignOffRulesCard() {
@@ -26,7 +31,7 @@ export function SignOffRulesCard() {
   return (
     <SectionCard
       title="Reviewer sign-off rules"
-      description="Each mandate type can demand a different number of countersignatures, restrict them to named roles and switch segregation of duties on or off. Rules are snapshotted onto a correction when it is raised."
+      description="Each mandate type can demand a different number of countersignatures, restrict them to named roles, switch segregation of duties on or off and set its own turnaround targets. Rules are snapshotted onto a correction when it is raised."
       actions={
         <div className="flex items-center gap-2">
           <StatusBadge label={editable ? "Editable" : "Read only"} tone={editable ? "success" : "neutral"} />
@@ -55,10 +60,16 @@ export function SignOffRulesCard() {
                   <p className="text-sm font-semibold text-navy">{m}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{rule.note}</p>
                 </div>
-                <StatusBadge
-                  label={`${rule.requiredApprovals} sign-off${rule.requiredApprovals === 1 ? "" : "s"}`}
-                  tone={rule.requiredApprovals > 1 ? "info" : "neutral"}
-                />
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <StatusBadge
+                    label={`${rule.requiredApprovals} sign-off${rule.requiredApprovals === 1 ? "" : "s"}`}
+                    tone={rule.requiredApprovals > 1 ? "info" : "neutral"}
+                  />
+                  <StatusBadge
+                    label={`${rule.signOffTargetHours}h / ${rule.applyTargetHours}h`}
+                    tone="neutral"
+                  />
+                </div>
               </div>
 
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -113,6 +124,69 @@ export function SignOffRulesCard() {
                       {rule.segregationOfDuties ? "Raiser excluded" : "Raiser may self-sign"}
                     </span>
                   </div>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label
+                    className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+                    htmlFor={`sla-signoff-${m}`}
+                  >
+                    Sign-off target
+                  </label>
+                  <Select
+                    value={String(rule.signOffTargetHours)}
+                    disabled={!editable}
+                    onValueChange={(v) => {
+                      if (setSignOffRule(m, { signOffTargetHours: Number(v) })) {
+                        toast.success("Turnaround target updated", {
+                          description: `${m}: reviewer sign-off within ${v}h.`,
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger id={`sla-signoff-${m}`} aria-label={`Sign-off target for ${m}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {signOffTargetOptions.map((h) => (
+                        <SelectItem key={h} value={String(h)}>
+                          {h} hours
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label
+                    className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+                    htmlFor={`sla-apply-${m}`}
+                  >
+                    Apply target
+                  </label>
+                  <Select
+                    value={String(rule.applyTargetHours)}
+                    disabled={!editable}
+                    onValueChange={(v) => {
+                      if (setSignOffRule(m, { applyTargetHours: Number(v) })) {
+                        toast.success("Turnaround target updated", {
+                          description: `${m}: reversal applied within ${v}h of sign-off.`,
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger id={`sla-apply-${m}`} aria-label={`Apply target for ${m}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {applyTargetOptions.map((h) => (
+                        <SelectItem key={h} value={String(h)}>
+                          {h} hours
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
