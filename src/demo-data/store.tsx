@@ -314,8 +314,73 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [actor, authorise, pushEvent],
   );
 
+  const setRolePermission = useCallback<DemoState["setRolePermission"]>(
+    (targetRole, permission, granted) => {
+      if (!authorise("roles.manage", "Role permission", `${targetRole}:${permission}`)) return false;
+      setPermissionMatrix((prev) => {
+        const current = prev[targetRole];
+        const next = granted
+          ? current.includes(permission)
+            ? current
+            : [...current, permission]
+          : current.filter((p) => p !== permission);
+        return { ...prev, [targetRole]: next };
+      });
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `${granted ? "Granted" : "Revoked"} permission for ${roleName(targetRole)}`,
+        objectType: "Role permission",
+        objectRef: `${targetRole}:${permission}`,
+        beforeAfter: `${granted ? "denied -> granted" : "granted -> denied"}`,
+        reason: `${actor} changed the simulated permission matrix`,
+        traceId: "trc-session",
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent],
+  );
+
+  const resetRolePermissions = useCallback<DemoState["resetRolePermissions"]>(
+    (targetRole) => {
+      if (!authorise("roles.manage", "Role permission", targetRole)) return false;
+      setPermissionMatrix((prev) => ({ ...prev, [targetRole]: baselineMatrix()[targetRole] }));
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Reset permissions for ${roleName(targetRole)}`,
+        objectType: "Role permission",
+        objectRef: targetRole,
+        beforeAfter: "session changes -> baseline mandate",
+        reason: `${actor} restored the baseline permission set`,
+        traceId: "trc-session",
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent],
+  );
+
+  const assignRoleActor = useCallback<DemoState["assignRoleActor"]>(
+    (targetRole, personName) => {
+      if (!authorise("roles.manage", "Role assignment", targetRole)) return false;
+      const before = roleAssignments[targetRole] ?? actorFor(targetRole);
+      setRoleAssignments((prev) => ({ ...prev, [targetRole]: personName }));
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Assigned ${roleName(targetRole)}`,
+        objectType: "Role assignment",
+        objectRef: targetRole,
+        beforeAfter: `${before} -> ${personName}`,
+        reason: `${actor} updated the simulated role holder`,
+        traceId: "trc-session",
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent, roleAssignments],
+  );
+
   const resetDemo = useCallback(() => {
-    setPermissionMatrix(baselineMatrix());
     setPermissionMatrix(baselineMatrix());
     setRoleAssignments(
       Object.fromEntries(
