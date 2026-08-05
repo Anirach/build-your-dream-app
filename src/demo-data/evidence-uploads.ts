@@ -40,6 +40,43 @@ export interface EvidenceAttachment {
   checksum: string;
   /** Session-only object URL for preview; not persisted. */
   previewUrl?: string;
+  /** Stable lineage identifier shared by every revision of the same evidence slot. */
+  lineageId: string;
+  /** 1-based revision number within the lineage. */
+  revision: number;
+  /** Current revision, or superseded by a later re-upload. */
+  status: "Current" | "Superseded";
+  /** Attachment id this revision replaced, when it is not the first revision. */
+  supersedesId?: string;
+  /** Attachment id that replaced this revision, once superseded. */
+  supersededById?: string;
+}
+
+/**
+ * Identity of an evidence slot: same artifact, linked state and reference means a
+ * re-upload is a new revision of the same evidence rather than a separate file.
+ */
+export function lineageKey(input: {
+  artifactId: string;
+  linkedState: EvidenceState;
+  reference: string;
+}) {
+  return `${input.artifactId}::${input.linkedState}::${(input.reference || "Not recorded")
+    .trim()
+    .toLowerCase()}`;
+}
+
+/** Groups attachments into lineages, newest revision first inside each group. */
+export function groupByLineage(attachments: EvidenceAttachment[]) {
+  const groups = new Map<string, EvidenceAttachment[]>();
+  for (const a of attachments) {
+    const list = groups.get(a.lineageId) ?? [];
+    list.push(a);
+    groups.set(a.lineageId, list);
+  }
+  return [...groups.values()]
+    .map((list) => [...list].sort((x, y) => y.revision - x.revision))
+    .sort((x, y) => (y[0]!.uploadedAt < x[0]!.uploadedAt ? -1 : 1));
 }
 
 /** Extensions accepted by the register in this mockup. */
