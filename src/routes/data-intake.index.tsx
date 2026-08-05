@@ -1,10 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Database, FileInput } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/page-header";
-import { PermissionButton, RoleAccessNotice } from "@/components/app/permission";
+import { RoleAccessNotice } from "@/components/app/permission";
 import {
   CorrectionModal,
   DataSourceCard,
@@ -132,15 +131,11 @@ function DataIntakePage() {
                   <p className="text-sm font-semibold text-navy">{d.label}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{d.sampleName}</p>
                 </div>
-                <PermissionButton permission="intake.import" size="sm" variant="outline" asChild={false}>
-                  <Link
-                    to="/data-intake/import/$importType"
-                    params={{ importType: d.importType }}
-                    className="contents"
-                  >
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/data-intake/import/$importType" params={{ importType: d.importType }}>
                     Open wizard
                   </Link>
-                </PermissionButton>
+                </Button>
               </li>
             ))}
           </ul>
@@ -272,5 +267,3 @@ function DataIntakePage() {
     </div>
   );
 }
-
-export { toast };
