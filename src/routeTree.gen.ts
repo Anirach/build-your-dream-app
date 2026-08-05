@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuditIndexRouteImport } from './routes/audit.index'
 import { Route as DataIntakeIndexRouteImport } from './routes/data-intake.index'
+import { Route as DeliveryReadinessIndexRouteImport } from './routes/delivery-readiness.index'
 import { Route as GapAnalysisIndexRouteImport } from './routes/gap-analysis.index'
 import { Route as ProgrammeIndexRouteImport } from './routes/programme.index'
 import { Route as ReviewsIndexRouteImport } from './routes/reviews.index'
@@ -43,6 +44,11 @@ const AuditIndexRoute = AuditIndexRouteImport.update({
 const DataIntakeIndexRoute = DataIntakeIndexRouteImport.update({
   id: '/data-intake/',
   path: '/data-intake/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeliveryReadinessIndexRoute = DeliveryReadinessIndexRouteImport.update({
+  id: '/delivery-readiness/',
+  path: '/delivery-readiness/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GapAnalysisIndexRoute = GapAnalysisIndexRouteImport.update({
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit/': typeof AuditIndexRoute
   '/data-intake/': typeof DataIntakeIndexRoute
+  '/delivery-readiness/': typeof DeliveryReadinessIndexRoute
   '/gap-analysis/': typeof GapAnalysisIndexRoute
   '/programme/': typeof ProgrammeIndexRoute
   '/reviews/': typeof ReviewsIndexRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit': typeof AuditIndexRoute
   '/data-intake': typeof DataIntakeIndexRoute
+  '/delivery-readiness': typeof DeliveryReadinessIndexRoute
   '/gap-analysis': typeof GapAnalysisIndexRoute
   '/programme': typeof ProgrammeIndexRoute
   '/reviews': typeof ReviewsIndexRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit/': typeof AuditIndexRoute
   '/data-intake/': typeof DataIntakeIndexRoute
+  '/delivery-readiness/': typeof DeliveryReadinessIndexRoute
   '/gap-analysis/': typeof GapAnalysisIndexRoute
   '/programme/': typeof ProgrammeIndexRoute
   '/reviews/': typeof ReviewsIndexRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/standards/$standardId'
     | '/audit/'
     | '/data-intake/'
+    | '/delivery-readiness/'
     | '/gap-analysis/'
     | '/programme/'
     | '/reviews/'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/standards/$standardId'
     | '/audit'
     | '/data-intake'
+    | '/delivery-readiness'
     | '/gap-analysis'
     | '/programme'
     | '/reviews'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/standards/$standardId'
     | '/audit/'
     | '/data-intake/'
+    | '/delivery-readiness/'
     | '/gap-analysis/'
     | '/programme/'
     | '/reviews/'
@@ -216,6 +228,7 @@ export interface RootRouteChildren {
   StandardsStandardIdRoute: typeof StandardsStandardIdRoute
   AuditIndexRoute: typeof AuditIndexRoute
   DataIntakeIndexRoute: typeof DataIntakeIndexRoute
+  DeliveryReadinessIndexRoute: typeof DeliveryReadinessIndexRoute
   GapAnalysisIndexRoute: typeof GapAnalysisIndexRoute
   ProgrammeIndexRoute: typeof ProgrammeIndexRoute
   ReviewsIndexRoute: typeof ReviewsIndexRoute
@@ -256,6 +269,13 @@ declare module '@tanstack/react-router' {
       path: '/data-intake'
       fullPath: '/data-intake/'
       preLoaderRoute: typeof DataIntakeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery-readiness/': {
+      id: '/delivery-readiness/'
+      path: '/delivery-readiness'
+      fullPath: '/delivery-readiness/'
+      preLoaderRoute: typeof DeliveryReadinessIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gap-analysis/': {
@@ -344,6 +364,7 @@ const rootRouteChildren: RootRouteChildren = {
   StandardsStandardIdRoute: StandardsStandardIdRoute,
   AuditIndexRoute: AuditIndexRoute,
   DataIntakeIndexRoute: DataIntakeIndexRoute,
+  DeliveryReadinessIndexRoute: DeliveryReadinessIndexRoute,
   GapAnalysisIndexRoute: GapAnalysisIndexRoute,
   ProgrammeIndexRoute: ProgrammeIndexRoute,
   ReviewsIndexRoute: ReviewsIndexRoute,

@@ -3,9 +3,18 @@
 import type { RoleId } from "@/demo-data/types";
 
 export const roleNavAccess: Record<RoleId, string[]> = {
-  exec: ["/", "/programme", "/standards", "/audit", "/sla-analytics", "/data-intake"],
+  exec: [
+    "/",
+    "/delivery-readiness",
+    "/programme",
+    "/standards",
+    "/audit",
+    "/sla-analytics",
+    "/data-intake",
+  ],
   pmo: [
     "/",
+    "/delivery-readiness",
     "/programme",
     "/standards",
     "/workbench",
@@ -16,9 +25,18 @@ export const roleNavAccess: Record<RoleId, string[]> = {
     "/sla-analytics",
     "/roles",
   ],
-  lead: ["/", "/programme", "/standards", "/workbench", "/gap-analysis", "/data-intake"],
+  lead: [
+    "/",
+    "/delivery-readiness",
+    "/programme",
+    "/standards",
+    "/workbench",
+    "/gap-analysis",
+    "/data-intake",
+  ],
   reviewer: [
     "/",
+    "/delivery-readiness",
     "/programme",
     "/standards",
     "/workbench",
@@ -27,7 +45,16 @@ export const roleNavAccess: Record<RoleId, string[]> = {
     "/audit",
     "/data-intake",
   ],
-  auditor: ["/", "/programme", "/standards", "/audit", "/sla-analytics", "/roles", "/data-intake"],
+  auditor: [
+    "/",
+    "/delivery-readiness",
+    "/programme",
+    "/standards",
+    "/audit",
+    "/sla-analytics",
+    "/roles",
+    "/data-intake",
+  ],
 };
 
 /** True when the role's mandate includes this destination (or a child of it). */
