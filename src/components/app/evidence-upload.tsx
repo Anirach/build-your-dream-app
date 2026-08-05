@@ -21,9 +21,12 @@ import {
   allowedExtensions,
   attachmentKinds,
   formatBytes,
+  groupByLineage,
+  lineageKey,
   maxUploadBytes,
   validateEvidenceFile,
   type AttachmentKind,
+  type EvidenceAttachment,
 } from "@/demo-data/evidence-uploads";
 import { useDemoState } from "@/demo-data/store";
 
@@ -45,8 +48,19 @@ export function EvidenceUploadPanel({
   const [stateLink, setStateLink] = useState<EvidenceState>(linkedState);
   const [note, setNote] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [openHistory, setOpenHistory] = useState<string[]>([]);
 
   const attachments = attachmentsFor(artifact.id);
+  const lineages = groupByLineage(attachments);
+  const targetLineage = lineageKey({
+    artifactId: artifact.id,
+    linkedState: stateLink,
+    reference: reference.trim() || "Not recorded",
+  });
+  const existing = attachments.filter((a) => a.lineageId === targetLineage);
+  const nextRevision =
+    existing.reduce((max, a) => Math.max(max, a.revision), 0) + 1;
+  const currentForSlot = existing.find((a) => a.status === "Current") ?? null;
 
   function pick(next: File | null | undefined) {
     if (!next) return;
@@ -64,9 +78,15 @@ export function EvidenceUploadPanel({
       return;
     }
     if (!note.trim()) {
-      toast.error("A note is required", {
-        description: "Describe what this file evidences so the register stays reviewable.",
-      });
+      toast.error(
+        nextRevision > 1 ? "A change reason is required" : "A note is required",
+        {
+          description:
+            nextRevision > 1
+              ? "Explain what changed in this revision so the lineage stays reviewable."
+              : "Describe what this file evidences so the register stays reviewable.",
+        },
+      );
       return;
     }
     const created = attachEvidenceFile({
@@ -78,11 +98,22 @@ export function EvidenceUploadPanel({
       note: note.trim(),
     });
     if (!created) return;
-    toast.success(`${created.id} attached to ${artifact.id}`, {
-      description: `Linked to state "${stateLink}", level ${created.linkedLevel} and reference ${created.reference}.`,
-    });
+    toast.success(
+      created.revision > 1
+        ? `${created.id} recorded as revision r${created.revision}`
+        : `${created.id} attached to ${artifact.id}`,
+      {
+        description:
+          created.revision > 1
+            ? `Supersedes ${created.supersedesId} on the same artifact, state "${created.linkedState}" and reference ${created.reference}.`
+            : `Linked to state "${stateLink}", level ${created.linkedLevel} and reference ${created.reference}.`,
+      },
+    );
     setFile(null);
     setNote("");
+    setOpenHistory((prev) =>
+      prev.includes(created.lineageId) ? prev : [...prev, created.lineageId],
+    );
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -187,9 +218,26 @@ export function EvidenceUploadPanel({
         {reference.trim() || "not recorded yet"}
       </p>
 
+      {currentForSlot ? (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-xs text-navy">
+          This artifact, state and reference already holds{" "}
+          <span className="font-medium">
+            {currentForSlot.id} r{currentForSlot.revision}
+          </span>{" "}
+          ({currentForSlot.fileName}). Uploading now records revision r{nextRevision} and
+          supersedes it; earlier revisions stay in the lineage.
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          No file recorded for this slot yet — this upload becomes revision r1.
+        </p>
+      )}
+
       <div className="space-y-1.5">
         <label htmlFor="att-note" className="text-xs font-medium text-muted-foreground">
-          What does this file evidence? (mandatory)
+          {nextRevision > 1
+            ? "What changed in this revision? (mandatory)"
+            : "What does this file evidence? (mandatory)"}
         </label>
         <textarea
           id="att-note"
@@ -201,60 +249,129 @@ export function EvidenceUploadPanel({
       </div>
 
       <PermissionButton permission="readiness.update" className="w-full" onClick={submit}>
-        Attach file to register
+        {nextRevision > 1 ? `Upload revision r${nextRevision}` : "Attach file to register"}
       </PermissionButton>
 
-      {attachments.length > 0 && (
+      {lineages.length > 0 && (
         <ul className="space-y-2">
-          {attachments.map((a) => (
-            <li key={a.id} className="rounded-md border border-border bg-background p-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-sm font-medium text-navy">
-                    <Paperclip className="size-3.5 shrink-0" aria-hidden />
-                    <span className="truncate">{a.fileName}</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {a.id} · {a.kind} · {formatBytes(a.sizeBytes)} · {a.mimeType}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Linked state {a.linkedState} · level {a.linkedLevel} · reference {a.reference}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {a.uploadedBy} · {a.uploadedAt} · {a.checksum}
-                  </p>
-                  <p className="mt-1 text-xs">{a.note}</p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  {a.previewUrl && (
-                    <a
-                      href={a.previewUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-medium text-primary underline"
-                    >
-                      Open
-                    </a>
-                  )}
-                  <PermissionButton
-                    permission="readiness.update"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      if (removeEvidenceAttachment(a.id, `Detached from ${artifact.id}`)) {
-                        toast.success(`${a.id} detached`);
+          {lineages.map((revisions) => {
+            const head = revisions[0]!;
+            const history = revisions.slice(1);
+            const expanded = openHistory.includes(head.lineageId);
+            return (
+              <li
+                key={head.lineageId}
+                className="rounded-md border border-border bg-background p-2.5"
+              >
+                <RevisionRow
+                  attachment={head}
+                  artifactId={artifact.id}
+                  onDetach={removeEvidenceAttachment}
+                />
+                {history.length > 0 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-1 h-7 px-1 text-xs"
+                      onClick={() =>
+                        setOpenHistory((prev) =>
+                          prev.includes(head.lineageId)
+                            ? prev.filter((id) => id !== head.lineageId)
+                            : [...prev, head.lineageId],
+                        )
                       }
-                    }}
-                  >
-                    <Trash2 className="size-3.5" aria-hidden />
-                    Detach
-                  </PermissionButton>
-                </div>
-              </div>
-            </li>
-          ))}
+                    >
+                      <History className="size-3.5" aria-hidden />
+                      {expanded ? "Hide" : "Show"} {history.length} earlier revision
+                      {history.length === 1 ? "" : "s"}
+                    </Button>
+                    {expanded && (
+                      <ul className="mt-1 space-y-2 border-l-2 border-border pl-2.5">
+                        {history.map((a) => (
+                          <li key={a.id}>
+                            <RevisionRow
+                              attachment={a}
+                              artifactId={artifact.id}
+                              onDetach={removeEvidenceAttachment}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
+    </div>
+  );
+}
+
+function RevisionRow({
+  attachment: a,
+  artifactId,
+  onDetach,
+}: {
+  attachment: EvidenceAttachment;
+  artifactId: string;
+  onDetach: (id: string, reason: string) => boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-navy">
+          <Paperclip className="size-3.5 shrink-0" aria-hidden />
+          <span className="truncate">{a.fileName}</span>
+          <StatusBadge
+            label={`r${a.revision} · ${a.status}`}
+            tone={a.status === "Current" ? "positive" : "neutral"}
+          />
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {a.id} · {a.kind} · {formatBytes(a.sizeBytes)} · {a.mimeType}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Linked state {a.linkedState} · level {a.linkedLevel} · reference {a.reference}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {a.uploadedBy} · {a.uploadedAt} · {a.checksum}
+        </p>
+        {a.supersedesId && (
+          <p className="text-xs text-muted-foreground">Supersedes {a.supersedesId}</p>
+        )}
+        {a.supersededById && (
+          <p className="text-xs text-muted-foreground">Superseded by {a.supersededById}</p>
+        )}
+        <p className="mt-1 text-xs">{a.note}</p>
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        {a.previewUrl && (
+          <a
+            href={a.previewUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-medium text-primary underline"
+          >
+            Open
+          </a>
+        )}
+        <PermissionButton
+          permission="readiness.update"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (onDetach(a.id, `Detached revision r${a.revision} from ${artifactId}`)) {
+              toast.success(`${a.id} (r${a.revision}) detached`);
+            }
+          }}
+        >
+          <Trash2 className="size-3.5" aria-hidden />
+          Detach
+        </PermissionButton>
+      </div>
     </div>
   );
 }
