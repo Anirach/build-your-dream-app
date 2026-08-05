@@ -360,9 +360,9 @@ function RevisionRow({
   onRequestRollback: (id: string, reason: string) => boolean;
   onDecideRollback: (requestId: string, approve: boolean, note: string) => boolean;
   /** Open request naming this revision as the one to reinstate. */
-  pendingRequest?: EvidenceRollbackRequest;
+  pendingRequest?: EvidenceRollbackRequest | undefined;
   /** Any open request on this lineage, which blocks a second request. */
-  lineagePending?: EvidenceRollbackRequest;
+  lineagePending?: EvidenceRollbackRequest | undefined;
 }) {
   return (
     <div className="flex items-start justify-between gap-2">
