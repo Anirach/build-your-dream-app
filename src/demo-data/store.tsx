@@ -11,6 +11,18 @@ import {
 
 import { seedAuditEvents } from "./audit";
 import {
+  isGateReady,
+  seedEvidenceRegister,
+  type EvidenceArtifact,
+  type EvidenceState,
+} from "./evidence-register";
+import {
+  activePacket,
+  packetById,
+  type PacketId,
+} from "./readiness";
+import { seedReviewPackages, type ReviewPackageView } from "./review-packages";
+import {
   seedCorrectionRequests,
   type CorrectionRequest,
 } from "./corrections";
@@ -72,6 +84,22 @@ export interface ClauseDecision {
   reason?: string;
   reviewer: string;
   at: string;
+}
+
+export interface PacketAttestation {
+  actor: string;
+  at: string;
+  reason: string;
+}
+
+export interface PacketAcceptanceRecord {
+  id: string;
+  packetId: PacketId;
+  packetVersion: string;
+  actor: string;
+  at: string;
+  reason: string;
+  evidence: string[];
 }
 
 interface DemoState {
@@ -177,6 +205,24 @@ interface DemoState {
   /** Nudge the current owner queue for a still-pending proposal. */
   remindProposalOwner: (id: string) => boolean;
   auditEvents: AuditEventView[];
+  /* ---- Production readiness centre (concept-only) ---- */
+  evidenceRegister: EvidenceArtifact[];
+  updateEvidenceState: (
+    id: string,
+    state: EvidenceState,
+    note: string,
+    reference?: string,
+  ) => boolean;
+  requestPacketAttestation: (packetId: PacketId) => boolean;
+  packetAttestations: Partial<Record<PacketId, PacketAttestation>>;
+  attestPacket: (packetId: PacketId, reason: string) => boolean;
+  acceptedPackets: PacketId[];
+  acceptanceHistory: PacketAcceptanceRecord[];
+  acceptPacket: (packetId: PacketId, reason: string) => boolean;
+  /** Ordered, human-readable reasons acceptance is not yet permitted. */
+  acceptanceBlockers: (packetId: PacketId) => string[];
+  reviewPackages: ReviewPackageView[];
+  approveReviewPackage: (id: string, note: string) => boolean;
   resetDemo: () => void;
 }
 
@@ -235,6 +281,15 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     useState<IntakeNotificationView[]>(seedIntakeNotifications);
   const [notifySeq, setNotifySeq] = useState(3);
   const [activitySeq, setActivitySeq] = useState(7);
+  const [evidenceRegister, setEvidenceRegister] =
+    useState<EvidenceArtifact[]>(seedEvidenceRegister);
+  const [packetAttestations, setPacketAttestations] = useState<
+    Partial<Record<PacketId, PacketAttestation>>
+  >({});
+  const [acceptedPackets, setAcceptedPackets] = useState<PacketId[]>([]);
+  const [acceptanceHistory, setAcceptanceHistory] = useState<PacketAcceptanceRecord[]>([]);
+  const [reviewPackages, setReviewPackages] =
+    useState<ReviewPackageView[]>(seedReviewPackages);
 
   const actor = roleAssignments[role] ?? actorFor(role);
 
@@ -1219,7 +1274,187 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.map((n) => (n.recipientRole === role ? { ...n, read: true } : n)));
   }, [role]);
 
+  /* ---- Production readiness centre: evidence, attestation and acceptance ---- */
+
+  const updateEvidenceState = useCallback<DemoState["updateEvidenceState"]>(
+    (id, state, note, reference) => {
+      const artifact = evidenceRegister.find((a) => a.id === id);
+      if (!artifact) return false;
+      if (!authorise("readiness.update", "Evidence artifact", id)) return false;
+      const at = now();
+      setEvidenceRegister((prev) =>
+        prev.map((a) =>
+          a.id === id
+            ? {
+                ...a,
+                state,
+                note,
+                ...(reference ? { reference } : {}),
+                ...(isGateReady(state)
+                  ? { attestedBy: actor, attestedAt: at }
+                  : { attestedBy: "Not recorded", attestedAt: "Not recorded" }),
+              }
+            : a,
+        ),
+      );
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Recorded input readiness: ${state}`,
+        objectType: "Evidence artifact",
+        objectRef: `${artifact.id} (${artifact.title})`,
+        beforeAfter: `${artifact.state} -> ${state}`,
+        reason: note || "No reason supplied",
+        traceId: "trc-readiness",
+      });
+      return true;
+    },
+    [actor, authorise, evidenceRegister, pushEvent],
+  );
+
+  const requestPacketAttestation = useCallback<DemoState["requestPacketAttestation"]>(
+    (packetId) => {
+      const packet = packetById(packetId);
+      if (!packet) return false;
+      if (!authorise("readiness.update", "Delivery packet", packet.code)) return false;
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: "Requested owner attestation for delivery packet",
+        objectType: "Delivery packet",
+        objectRef: `${packet.code} - ${packet.name}`,
+        beforeAfter: "no change - attestation requested",
+        reason: `Attestation requested from ${packet.owner} (${packet.ownerRole}). Simulated request only.`,
+        traceId: "trc-readiness",
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent],
+  );
+
+  const attestPacket = useCallback<DemoState["attestPacket"]>(
+    (packetId, reason) => {
+      const packet = packetById(packetId);
+      if (!packet) return false;
+      if (!authorise("readiness.update", "Delivery packet", packet.code)) return false;
+      setPacketAttestations((prev) => ({
+        ...prev,
+        [packetId]: { actor, at: now(), reason },
+      }));
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: "Recorded readiness attestation for delivery packet",
+        objectType: "Delivery packet",
+        objectRef: `${packet.code} - ${packet.name}`,
+        beforeAfter: "not attested -> attested (simulated)",
+        reason,
+        traceId: "trc-readiness",
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent],
+  );
+
+  const acceptanceBlockers = useCallback<DemoState["acceptanceBlockers"]>(
+    (packetId) => {
+      const packet = packetById(packetId);
+      if (!packet) return ["Unknown delivery packet"];
+      const blockers: string[] = [];
+      if (acceptedPackets.includes(packetId)) return ["This packet is already accepted."];
+      if (activePacket(acceptedPackets) !== packetId) {
+        blockers.push(
+          "A prior packet is not accepted yet. Work-in-progress is limited to one active packet.",
+        );
+      }
+      const outstanding = packet.requiredEvidence.filter((id) => {
+        const artifact = evidenceRegister.find((a) => a.id === id);
+        return !artifact || !isGateReady(artifact.state);
+      });
+      if (outstanding.length > 0) {
+        blockers.push(
+          `${outstanding.length} mandatory evidence item(s) are not Ready for review: ${outstanding.join(", ")}.`,
+        );
+      }
+      const attestation = packetAttestations[packetId];
+      if (!attestation) {
+        blockers.push(`${packet.owner} (${packet.ownerRole}) has not attested readiness.`);
+      } else if (attestation.actor === actor) {
+        blockers.push(
+          "Dual control: the actor who attested readiness cannot also record independent acceptance.",
+        );
+      }
+      return blockers;
+    },
+    [acceptedPackets, actor, evidenceRegister, packetAttestations],
+  );
+
+  const acceptPacket = useCallback<DemoState["acceptPacket"]>(
+    (packetId, reason) => {
+      const packet = packetById(packetId);
+      if (!packet) return false;
+      if (!authorise("readiness.accept", "Delivery packet", packet.code)) return false;
+      if (acceptanceBlockers(packetId).length > 0) return false;
+      const at = now();
+      setAcceptedPackets((prev) => (prev.includes(packetId) ? prev : [...prev, packetId]));
+      setAcceptanceHistory((prev) => [
+        {
+          id: `ACC-${prev.length + 1}`,
+          packetId,
+          packetVersion: `${packet.code} v1 (synthetic)`,
+          actor,
+          at,
+          reason,
+          evidence: packet.requiredEvidence,
+        },
+        ...prev,
+      ]);
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: "Accepted delivery packet against its acceptance gate",
+        objectType: "Delivery packet",
+        objectRef: `${packet.code} - ${packet.name}`,
+        beforeAfter: "active -> accepted (append-only; corrections use reversal)",
+        reason: `${reason} | Evidence pack: ${packet.requiredEvidence.join(", ")}`,
+        traceId: "trc-readiness",
+      });
+      return true;
+    },
+    [acceptanceBlockers, actor, authorise, pushEvent],
+  );
+
+  const approveReviewPackage = useCallback<DemoState["approveReviewPackage"]>(
+    (id, note) => {
+      const pack = reviewPackages.find((p) => p.id === id);
+      if (!pack) return false;
+      if (!authorise("review.package", "Review package", id)) return false;
+      if (pack.state !== "Validated - awaiting reviewer approval") return false;
+      if (pack.validation.some((row) => row.blocked)) return false;
+      setReviewPackages((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, state: "Approved" } : p)),
+      );
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: "Approved governed review package",
+        objectType: "Review package",
+        objectRef: `${pack.id} ${pack.version} (${pack.sopRef})`,
+        beforeAfter: "validated -> approved mapping (simulated)",
+        reason: note || "Reviewer approval recorded in local mock state",
+        traceId: "trc-readiness",
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent, reviewPackages],
+  );
+
   const resetDemo = useCallback(() => {
+    setEvidenceRegister(seedEvidenceRegister);
+    setPacketAttestations({});
+    setAcceptedPackets([]);
+    setAcceptanceHistory([]);
+    setReviewPackages(seedReviewPackages);
     setPermissionMatrix(baselineMatrix());
     setSignOffRules(baselineSignOffRules());
     setRoleAssignments(
@@ -1315,6 +1550,17 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       markAllNotificationsRead,
       remindProposalOwner,
       auditEvents: [...sessionEvents, ...seedAuditEvents],
+      evidenceRegister,
+      updateEvidenceState,
+      requestPacketAttestation,
+      packetAttestations,
+      attestPacket,
+      acceptedPackets,
+      acceptanceHistory,
+      acceptPacket,
+      acceptanceBlockers,
+      reviewPackages,
+      approveReviewPackage,
       resetDemo,
     }),
     [
@@ -1322,6 +1568,17 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       signedIn,
       allows,
       denialReason,
+      evidenceRegister,
+      updateEvidenceState,
+      requestPacketAttestation,
+      packetAttestations,
+      attestPacket,
+      acceptedPackets,
+      acceptanceHistory,
+      acceptPacket,
+      acceptanceBlockers,
+      reviewPackages,
+      approveReviewPackage,
       actor,
       clauseDecisions,
       decideClause,

@@ -22,7 +22,12 @@ export type Permission =
   | "intake.record.add"
   | "intake.import"
   | "registry.propose"
-  | "registry.approve";
+  | "registry.approve"
+  | "readiness.view"
+  | "readiness.update"
+  | "readiness.accept"
+  | "knowledge.qa"
+  | "review.package";
 
 export const permissionLabels: Record<Permission, string> = {
   "mapping.approve": "Approve clause mappings",
@@ -43,6 +48,11 @@ export const permissionLabels: Record<Permission, string> = {
   "intake.import": "Run and confirm a guided import",
   "registry.propose": "Propose a module-registry change",
   "registry.approve": "Approve or reject a module-registry change proposal",
+  "readiness.view": "View the production readiness roadmap, gates and evidence register",
+  "readiness.update": "Record references, request attestations and attest readiness of inputs",
+  "readiness.accept": "Accept a delivery packet against its acceptance gate",
+  "knowledge.qa": "Review corpus, citation and retrieval quality gates",
+  "review.package": "Act on governed review packages and import validation outcomes",
 };
 
 /**
@@ -50,7 +60,7 @@ export const permissionLabels: Record<Permission, string> = {
  * mandate requires.
  */
 export const rolePermissions: Record<RoleId, Permission[]> = {
-  exec: ["intake.view"],
+  exec: ["intake.view", "readiness.view"],
   pmo: [
     "review.reassign",
     "scenario.run",
@@ -63,8 +73,19 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "intake.import",
     "registry.propose",
     "registry.approve",
+    "readiness.view",
+    "readiness.update",
+    "readiness.accept",
   ],
-  lead: ["gap.return", "scenario.run", "correction.request", "intake.view", "intake.record.add"],
+  lead: [
+    "gap.return",
+    "scenario.run",
+    "correction.request",
+    "intake.view",
+    "intake.record.add",
+    "readiness.view",
+    "readiness.update",
+  ],
   reviewer: [
     "mapping.approve",
     "mapping.edit",
@@ -76,8 +97,18 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "correction.request",
     "correction.signoff",
     "intake.view",
+    "readiness.view",
+    "knowledge.qa",
+    "review.package",
   ],
-  auditor: ["audit.correct", "correction.signoff", "roles.manage", "intake.view"],
+  auditor: [
+    "audit.correct",
+    "correction.signoff",
+    "roles.manage",
+    "intake.view",
+    "readiness.view",
+    "knowledge.qa",
+  ],
 };
 
 export const allPermissions = Object.keys(permissionLabels) as Permission[];

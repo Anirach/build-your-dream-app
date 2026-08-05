@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
   Bookmark,
+  ClipboardList,
   ClipboardCheck,
   Database,
   Gauge,
@@ -51,6 +52,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", label: "Overview", icon: LayoutDashboard },
+  { to: "/delivery-readiness", label: "Production Readiness", icon: ClipboardList },
   { to: "/programme", label: "Programme", icon: Layers },
   { to: "/standards", label: "Standards Library", icon: Bookmark },
   { to: "/workbench", label: "AI Workbench", icon: Sparkles },
