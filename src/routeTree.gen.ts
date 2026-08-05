@@ -15,6 +15,7 @@ import { Route as GapAnalysisIndexRouteImport } from './routes/gap-analysis.inde
 import { Route as ProgrammeIndexRouteImport } from './routes/programme.index'
 import { Route as ReviewsIndexRouteImport } from './routes/reviews.index'
 import { Route as RolesIndexRouteImport } from './routes/roles.index'
+import { Route as SlaAnalyticsIndexRouteImport } from './routes/sla-analytics.index'
 import { Route as StandardsIndexRouteImport } from './routes/standards.index'
 import { Route as StandardsStandardIdRouteImport } from './routes/standards.$standardId'
 import { Route as WorkbenchIndexRouteImport } from './routes/workbench.index'
@@ -50,6 +51,11 @@ const RolesIndexRoute = RolesIndexRouteImport.update({
   path: '/roles/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SlaAnalyticsIndexRoute = SlaAnalyticsIndexRouteImport.update({
+  id: '/sla-analytics/',
+  path: '/sla-analytics/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StandardsIndexRoute = StandardsIndexRouteImport.update({
   id: '/standards/',
   path: '/standards/',
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/programme/': typeof ProgrammeIndexRoute
   '/reviews/': typeof ReviewsIndexRoute
   '/roles/': typeof RolesIndexRoute
+  '/sla-analytics/': typeof SlaAnalyticsIndexRoute
   '/standards/': typeof StandardsIndexRoute
   '/workbench/': typeof WorkbenchIndexRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/programme': typeof ProgrammeIndexRoute
   '/reviews': typeof ReviewsIndexRoute
   '/roles': typeof RolesIndexRoute
+  '/sla-analytics': typeof SlaAnalyticsIndexRoute
   '/standards': typeof StandardsIndexRoute
   '/workbench': typeof WorkbenchIndexRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/programme/': typeof ProgrammeIndexRoute
   '/reviews/': typeof ReviewsIndexRoute
   '/roles/': typeof RolesIndexRoute
+  '/sla-analytics/': typeof SlaAnalyticsIndexRoute
   '/standards/': typeof StandardsIndexRoute
   '/workbench/': typeof WorkbenchIndexRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/programme/'
     | '/reviews/'
     | '/roles/'
+    | '/sla-analytics/'
     | '/standards/'
     | '/workbench/'
     | '/programme/modules/$moduleId'
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/programme'
     | '/reviews'
     | '/roles'
+    | '/sla-analytics'
     | '/standards'
     | '/workbench'
     | '/programme/modules/$moduleId'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/programme/'
     | '/reviews/'
     | '/roles/'
+    | '/sla-analytics/'
     | '/standards/'
     | '/workbench/'
     | '/programme/modules/$moduleId'
@@ -156,6 +168,7 @@ export interface RootRouteChildren {
   ProgrammeIndexRoute: typeof ProgrammeIndexRoute
   ReviewsIndexRoute: typeof ReviewsIndexRoute
   RolesIndexRoute: typeof RolesIndexRoute
+  SlaAnalyticsIndexRoute: typeof SlaAnalyticsIndexRoute
   StandardsIndexRoute: typeof StandardsIndexRoute
   WorkbenchIndexRoute: typeof WorkbenchIndexRoute
   ProgrammeModulesModuleIdRoute: typeof ProgrammeModulesModuleIdRoute
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RolesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sla-analytics/': {
+      id: '/sla-analytics/'
+      path: '/sla-analytics'
+      fullPath: '/sla-analytics/'
+      preLoaderRoute: typeof SlaAnalyticsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/standards/': {
       id: '/standards/'
       path: '/standards'
@@ -244,6 +264,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProgrammeIndexRoute: ProgrammeIndexRoute,
   ReviewsIndexRoute: ReviewsIndexRoute,
   RolesIndexRoute: RolesIndexRoute,
+  SlaAnalyticsIndexRoute: SlaAnalyticsIndexRoute,
   StandardsIndexRoute: StandardsIndexRoute,
   WorkbenchIndexRoute: WorkbenchIndexRoute,
   ProgrammeModulesModuleIdRoute: ProgrammeModulesModuleIdRoute,
@@ -251,13 +272,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
