@@ -25,7 +25,7 @@ export const Route = createFileRoute("/standards/$standardId")({
 });
 
 function StandardDetail() {
-  const { standard } = Route.useLoaderData();
+  const { standard }: { standard: StandardRecord } = Route.useLoaderData();
   return (
     <>
       <PageHeader
