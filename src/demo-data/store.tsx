@@ -348,6 +348,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       selectScenario,
       reviewStatuses,
       reassign,
+      recordCorrection,
       sessionEvents,
       resetDemo,
     ],
