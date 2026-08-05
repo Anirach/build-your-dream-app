@@ -17,6 +17,13 @@ import {
   type EvidenceState,
 } from "./evidence-register";
 import {
+  placeholderChecksum,
+  validateEvidenceFile,
+  formatBytes,
+  type AttachmentKind,
+  type EvidenceAttachment,
+} from "./evidence-uploads";
+import {
   activePacket,
   packetById,
   type PacketId,
@@ -213,6 +220,18 @@ interface DemoState {
     note: string,
     reference?: string,
   ) => boolean;
+  /** Session-held evidence files, newest first, keyed by artifact. */
+  evidenceAttachments: EvidenceAttachment[];
+  attachmentsFor: (artifactId: string) => EvidenceAttachment[];
+  attachEvidenceFile: (input: {
+    artifactId: string;
+    file: File;
+    kind: AttachmentKind;
+    linkedState: EvidenceState;
+    reference: string;
+    note: string;
+  }) => EvidenceAttachment | null;
+  removeEvidenceAttachment: (attachmentId: string, reason: string) => boolean;
   requestPacketAttestation: (packetId: PacketId) => boolean;
   packetAttestations: Partial<Record<PacketId, PacketAttestation>>;
   attestPacket: (packetId: PacketId, reason: string) => boolean;
@@ -290,6 +309,8 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   const [acceptanceHistory, setAcceptanceHistory] = useState<PacketAcceptanceRecord[]>([]);
   const [reviewPackages, setReviewPackages] =
     useState<ReviewPackageView[]>(seedReviewPackages);
+  const [evidenceAttachments, setEvidenceAttachments] = useState<EvidenceAttachment[]>([]);
+  const [attachmentSeq, setAttachmentSeq] = useState(1);
 
   const actor = roleAssignments[role] ?? actorFor(role);
 
@@ -1312,6 +1333,75 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [actor, authorise, evidenceRegister, pushEvent],
   );
 
+  const attachmentsFor = useCallback(
+    (artifactId: string) => evidenceAttachments.filter((a) => a.artifactId === artifactId),
+    [evidenceAttachments],
+  );
+
+  const attachEvidenceFile = useCallback<DemoState["attachEvidenceFile"]>(
+    ({ artifactId, file, kind, linkedState, reference, note }) => {
+      const artifact = evidenceRegister.find((a) => a.id === artifactId);
+      if (!artifact) return null;
+      if (!authorise("readiness.update", "Evidence artifact", artifactId)) return null;
+      const rejection = validateEvidenceFile(file);
+      if (rejection) return null;
+      const seqNo = attachmentSeq;
+      setAttachmentSeq((n) => n + 1);
+      const attachment: EvidenceAttachment = {
+        id: `ATT-${String(seqNo).padStart(3, "0")}`,
+        artifactId,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        kind,
+        linkedState,
+        linkedLevel: artifact.level,
+        reference: reference || "Not recorded",
+        note,
+        uploadedBy: actor,
+        uploadedAt: now(),
+        checksum: placeholderChecksum(file.name, file.size, seqNo),
+        ...(typeof URL !== "undefined" && typeof URL.createObjectURL === "function"
+          ? { previewUrl: URL.createObjectURL(file) }
+          : {}),
+      };
+      setEvidenceAttachments((prev) => [attachment, ...prev]);
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Attached evidence file (${kind})`,
+        objectType: "Evidence artifact",
+        objectRef: `${artifact.id} (${artifact.title})`,
+        beforeAfter: `${attachment.id} · ${file.name} · ${formatBytes(file.size)} · linked state ${linkedState}`,
+        reason: note || "No reason supplied",
+        traceId: "trc-readiness",
+      });
+      return attachment;
+    },
+    [actor, attachmentSeq, authorise, evidenceRegister, pushEvent],
+  );
+
+  const removeEvidenceAttachment = useCallback<DemoState["removeEvidenceAttachment"]>(
+    (attachmentId, reason) => {
+      const attachment = evidenceAttachments.find((a) => a.id === attachmentId);
+      if (!attachment) return false;
+      if (!authorise("readiness.update", "Evidence artifact", attachment.artifactId)) return false;
+      setEvidenceAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: "Detached evidence file",
+        objectType: "Evidence artifact",
+        objectRef: `${attachment.artifactId} · ${attachment.id}`,
+        beforeAfter: `${attachment.fileName} -> removed from register`,
+        reason: reason || "No reason supplied",
+        traceId: "trc-readiness",
+      });
+      return true;
+    },
+    [actor, authorise, evidenceAttachments, pushEvent],
+  );
+
   const requestPacketAttestation = useCallback<DemoState["requestPacketAttestation"]>(
     (packetId) => {
       const packet = packetById(packetId);
@@ -1451,6 +1541,8 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
 
   const resetDemo = useCallback(() => {
     setEvidenceRegister(seedEvidenceRegister);
+    setEvidenceAttachments([]);
+    setAttachmentSeq(1);
     setPacketAttestations({});
     setAcceptedPackets([]);
     setAcceptanceHistory([]);
@@ -1552,6 +1644,10 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       auditEvents: [...sessionEvents, ...seedAuditEvents],
       evidenceRegister,
       updateEvidenceState,
+      evidenceAttachments,
+      attachmentsFor,
+      attachEvidenceFile,
+      removeEvidenceAttachment,
       requestPacketAttestation,
       packetAttestations,
       attestPacket,
@@ -1570,6 +1666,10 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       denialReason,
       evidenceRegister,
       updateEvidenceState,
+      evidenceAttachments,
+      attachmentsFor,
+      attachEvidenceFile,
+      removeEvidenceAttachment,
       requestPacketAttestation,
       packetAttestations,
       attestPacket,
