@@ -10,7 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuditIndexRouteImport } from './routes/audit.index'
+import { Route as GapAnalysisIndexRouteImport } from './routes/gap-analysis.index'
 import { Route as ProgrammeIndexRouteImport } from './routes/programme.index'
+import { Route as ReviewsIndexRouteImport } from './routes/reviews.index'
+import { Route as StandardsIndexRouteImport } from './routes/standards.index'
+import { Route as StandardsStandardIdRouteImport } from './routes/standards.$standardId'
+import { Route as WorkbenchIndexRouteImport } from './routes/workbench.index'
 import { Route as ProgrammeModulesModuleIdRouteImport } from './routes/programme.modules.$moduleId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -18,9 +24,39 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuditIndexRoute = AuditIndexRouteImport.update({
+  id: '/audit/',
+  path: '/audit/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GapAnalysisIndexRoute = GapAnalysisIndexRouteImport.update({
+  id: '/gap-analysis/',
+  path: '/gap-analysis/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProgrammeIndexRoute = ProgrammeIndexRouteImport.update({
   id: '/programme/',
   path: '/programme/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewsIndexRoute = ReviewsIndexRouteImport.update({
+  id: '/reviews/',
+  path: '/reviews/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StandardsIndexRoute = StandardsIndexRouteImport.update({
+  id: '/standards/',
+  path: '/standards/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StandardsStandardIdRoute = StandardsStandardIdRouteImport.update({
+  id: '/standards/$standardId',
+  path: '/standards/$standardId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkbenchIndexRoute = WorkbenchIndexRouteImport.update({
+  id: '/workbench/',
+  path: '/workbench/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProgrammeModulesModuleIdRoute =
@@ -32,31 +68,83 @@ const ProgrammeModulesModuleIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/standards/$standardId': typeof StandardsStandardIdRoute
+  '/audit/': typeof AuditIndexRoute
+  '/gap-analysis/': typeof GapAnalysisIndexRoute
   '/programme/': typeof ProgrammeIndexRoute
+  '/reviews/': typeof ReviewsIndexRoute
+  '/standards/': typeof StandardsIndexRoute
+  '/workbench/': typeof WorkbenchIndexRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/standards/$standardId': typeof StandardsStandardIdRoute
+  '/audit': typeof AuditIndexRoute
+  '/gap-analysis': typeof GapAnalysisIndexRoute
   '/programme': typeof ProgrammeIndexRoute
+  '/reviews': typeof ReviewsIndexRoute
+  '/standards': typeof StandardsIndexRoute
+  '/workbench': typeof WorkbenchIndexRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/standards/$standardId': typeof StandardsStandardIdRoute
+  '/audit/': typeof AuditIndexRoute
+  '/gap-analysis/': typeof GapAnalysisIndexRoute
   '/programme/': typeof ProgrammeIndexRoute
+  '/reviews/': typeof ReviewsIndexRoute
+  '/standards/': typeof StandardsIndexRoute
+  '/workbench/': typeof WorkbenchIndexRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/programme/' | '/programme/modules/$moduleId'
+  fullPaths:
+    | '/'
+    | '/standards/$standardId'
+    | '/audit/'
+    | '/gap-analysis/'
+    | '/programme/'
+    | '/reviews/'
+    | '/standards/'
+    | '/workbench/'
+    | '/programme/modules/$moduleId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/programme' | '/programme/modules/$moduleId'
-  id: '__root__' | '/' | '/programme/' | '/programme/modules/$moduleId'
+  to:
+    | '/'
+    | '/standards/$standardId'
+    | '/audit'
+    | '/gap-analysis'
+    | '/programme'
+    | '/reviews'
+    | '/standards'
+    | '/workbench'
+    | '/programme/modules/$moduleId'
+  id:
+    | '__root__'
+    | '/'
+    | '/standards/$standardId'
+    | '/audit/'
+    | '/gap-analysis/'
+    | '/programme/'
+    | '/reviews/'
+    | '/standards/'
+    | '/workbench/'
+    | '/programme/modules/$moduleId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  StandardsStandardIdRoute: typeof StandardsStandardIdRoute
+  AuditIndexRoute: typeof AuditIndexRoute
+  GapAnalysisIndexRoute: typeof GapAnalysisIndexRoute
   ProgrammeIndexRoute: typeof ProgrammeIndexRoute
+  ReviewsIndexRoute: typeof ReviewsIndexRoute
+  StandardsIndexRoute: typeof StandardsIndexRoute
+  WorkbenchIndexRoute: typeof WorkbenchIndexRoute
   ProgrammeModulesModuleIdRoute: typeof ProgrammeModulesModuleIdRoute
 }
 
@@ -69,11 +157,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/audit/': {
+      id: '/audit/'
+      path: '/audit'
+      fullPath: '/audit/'
+      preLoaderRoute: typeof AuditIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gap-analysis/': {
+      id: '/gap-analysis/'
+      path: '/gap-analysis'
+      fullPath: '/gap-analysis/'
+      preLoaderRoute: typeof GapAnalysisIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/programme/': {
       id: '/programme/'
       path: '/programme'
       fullPath: '/programme/'
       preLoaderRoute: typeof ProgrammeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reviews/': {
+      id: '/reviews/'
+      path: '/reviews'
+      fullPath: '/reviews/'
+      preLoaderRoute: typeof ReviewsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/standards/': {
+      id: '/standards/'
+      path: '/standards'
+      fullPath: '/standards/'
+      preLoaderRoute: typeof StandardsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/standards/$standardId': {
+      id: '/standards/$standardId'
+      path: '/standards/$standardId'
+      fullPath: '/standards/$standardId'
+      preLoaderRoute: typeof StandardsStandardIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workbench/': {
+      id: '/workbench/'
+      path: '/workbench'
+      fullPath: '/workbench/'
+      preLoaderRoute: typeof WorkbenchIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/programme/modules/$moduleId': {
@@ -88,9 +218,25 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  StandardsStandardIdRoute: StandardsStandardIdRoute,
+  AuditIndexRoute: AuditIndexRoute,
+  GapAnalysisIndexRoute: GapAnalysisIndexRoute,
   ProgrammeIndexRoute: ProgrammeIndexRoute,
+  ReviewsIndexRoute: ReviewsIndexRoute,
+  StandardsIndexRoute: StandardsIndexRoute,
+  WorkbenchIndexRoute: WorkbenchIndexRoute,
   ProgrammeModulesModuleIdRoute: ProgrammeModulesModuleIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
