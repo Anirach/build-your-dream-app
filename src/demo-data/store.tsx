@@ -1347,6 +1347,13 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       if (rejection) return null;
       const seqNo = attachmentSeq;
       setAttachmentSeq((n) => n + 1);
+      const lineageId = lineageKey({ artifactId, linkedState, reference: reference || "Not recorded" });
+      const priorRevisions = evidenceAttachments.filter((a) => a.lineageId === lineageId);
+      const previous = priorRevisions.reduce<EvidenceAttachment | null>(
+        (best, a) => (!best || a.revision > best.revision ? a : best),
+        null,
+      );
+      const revision = (previous?.revision ?? 0) + 1;
       const attachment: EvidenceAttachment = {
         id: `ATT-${String(seqNo).padStart(3, "0")}`,
         artifactId,
@@ -1361,24 +1368,44 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
         uploadedBy: actor,
         uploadedAt: now(),
         checksum: placeholderChecksum(file.name, file.size, seqNo),
+        lineageId,
+        revision,
+        status: "Current",
+        ...(previous ? { supersedesId: previous.id } : {}),
         ...(typeof URL !== "undefined" && typeof URL.createObjectURL === "function"
           ? { previewUrl: URL.createObjectURL(file) }
           : {}),
       };
-      setEvidenceAttachments((prev) => [attachment, ...prev]);
+      setEvidenceAttachments((prev) => [
+        attachment,
+        ...prev.map((a) =>
+          a.lineageId === lineageId && a.status === "Current"
+            ? {
+                ...a,
+                status: "Superseded" as const,
+                supersededById: attachment.id,
+              }
+            : a,
+        ),
+      ]);
       pushEvent({
         actor,
         actorType: "Human",
-        action: `Attached evidence file (${kind})`,
+        action:
+          revision === 1
+            ? `Attached evidence file (${kind})`
+            : `Uploaded evidence revision r${revision} (${kind})`,
         objectType: "Evidence artifact",
         objectRef: `${artifact.id} (${artifact.title})`,
-        beforeAfter: `${attachment.id} · ${file.name} · ${formatBytes(file.size)} · linked state ${linkedState}`,
+        beforeAfter: previous
+          ? `${previous.id} r${previous.revision} (${previous.fileName}) -> ${attachment.id} r${revision} (${file.name} · ${formatBytes(file.size)}) · lineage ${lineageId}`
+          : `${attachment.id} r1 · ${file.name} · ${formatBytes(file.size)} · linked state ${linkedState} · reference ${attachment.reference}`,
         reason: note || "No reason supplied",
         traceId: "trc-readiness",
       });
       return attachment;
     },
-    [actor, attachmentSeq, authorise, evidenceRegister, pushEvent],
+    [actor, attachmentSeq, authorise, evidenceAttachments, evidenceRegister, pushEvent],
   );
 
   const removeEvidenceAttachment = useCallback<DemoState["removeEvidenceAttachment"]>(
@@ -1386,14 +1413,35 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       const attachment = evidenceAttachments.find((a) => a.id === attachmentId);
       if (!attachment) return false;
       if (!authorise("readiness.update", "Evidence artifact", attachment.artifactId)) return false;
-      setEvidenceAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      const restored =
+        attachment.status === "Current"
+          ? evidenceAttachments
+              .filter((a) => a.lineageId === attachment.lineageId && a.id !== attachmentId)
+              .reduce<EvidenceAttachment | null>(
+                (best, a) => (!best || a.revision > best.revision ? a : best),
+                null,
+              )
+          : null;
+      setEvidenceAttachments((prev) =>
+        prev
+          .filter((a) => a.id !== attachmentId)
+          .map((a) => {
+            if (restored && a.id === restored.id) {
+              const { supersededById: _dropped, ...rest } = a;
+              return { ...rest, status: "Current" as const };
+            }
+            return a;
+          }),
+      );
       pushEvent({
         actor,
         actorType: "Human",
-        action: "Detached evidence file",
+        action: `Detached evidence revision r${attachment.revision}`,
         objectType: "Evidence artifact",
         objectRef: `${attachment.artifactId} · ${attachment.id}`,
-        beforeAfter: `${attachment.fileName} -> removed from register`,
+        beforeAfter: restored
+          ? `${attachment.fileName} (r${attachment.revision}) removed -> ${restored.id} r${restored.revision} reinstated as current`
+          : `${attachment.fileName} (r${attachment.revision}) -> removed from register`,
         reason: reason || "No reason supplied",
         traceId: "trc-readiness",
       });
