@@ -25,6 +25,11 @@ import {
   type EvidenceAttachment,
 } from "./evidence-uploads";
 import {
+  pendingRequestFor,
+  pendingRequestForLineage,
+  type EvidenceRollbackRequest,
+} from "./evidence-rollback";
+import {
   activePacket,
   packetById,
   type PacketId,
@@ -233,8 +238,12 @@ interface DemoState {
     note: string;
   }) => EvidenceAttachment | null;
   removeEvidenceAttachment: (attachmentId: string, reason: string) => boolean;
-  /** Make an earlier revision current again; every revision is retained. */
-  rollbackEvidenceRevision: (attachmentId: string, reason: string) => boolean;
+  /** Raise a rollback request; a PMO approver must confirm before it applies. */
+  requestEvidenceRollback: (attachmentId: string, reason: string) => boolean;
+  /** PMO decision on a pending rollback request; approval applies the rollback. */
+  decideEvidenceRollback: (requestId: string, approve: boolean, note: string) => boolean;
+  /** Session rollback requests, newest first. */
+  evidenceRollbackRequests: EvidenceRollbackRequest[];
   requestPacketAttestation: (packetId: PacketId) => boolean;
   packetAttestations: Partial<Record<PacketId, PacketAttestation>>;
   attestPacket: (packetId: PacketId, reason: string) => boolean;
@@ -314,6 +323,8 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     useState<ReviewPackageView[]>(seedReviewPackages);
   const [evidenceAttachments, setEvidenceAttachments] = useState<EvidenceAttachment[]>([]);
   const [attachmentSeq, setAttachmentSeq] = useState(1);
+  const [rollbackRequests, setRollbackRequests] = useState<EvidenceRollbackRequest[]>([]);
+  const [rollbackSeq, setRollbackSeq] = useState(1);
 
   const actor = roleAssignments[role] ?? actorFor(role);
 
