@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { reviewQueue, reviewers } from "@/demo-data/reviews";
 import { useDemoState } from "@/demo-data/store";
+import { RoleAccessNotice } from "@/components/app/permission";
 import type { ReviewQueueItem } from "@/demo-data/types";
 
 const TITLE = "Review queue - BDMS Intelligence Mockup";
@@ -56,6 +57,7 @@ const FILTERS: { key: FilterKey; label: string; match: (s: ReviewQueueItem["stat
 
 function Page() {
   const { reviewStatuses, reassign } = useDemoState();
+  const { can, denialReason } = useDemoState();
   const [filter, setFilter] = useState<FilterKey>("awaiting");
   const [query, setQuery] = useState("");
 
@@ -251,15 +253,25 @@ function Page() {
                         </Link>
                       </Button>
                       <Select
+                        disabled={!can("review.reassign")}
                         onValueChange={(value) => {
-                          reassign(item.id, value);
-                          toast.success("Simulated reassignment recorded", {
-                            description: `${item.id} reassigned to ${value} in the session audit trail.`,
-                          });
+                          if (reassign(item.id, value)) {
+                            toast.success("Simulated reassignment recorded", {
+                              description: `${item.id} reassigned to ${value} in the session audit trail.`,
+                            });
+                          }
                         }}
                       >
-                        <SelectTrigger className="h-9" aria-label={`Reassign ${item.id}`}>
-                          <SelectValue placeholder="Reassign reviewer" />
+                        <SelectTrigger
+                          className="h-9"
+                          aria-label={`Reassign ${item.id}`}
+                          title={can("review.reassign") ? undefined : denialReason("review.reassign")}
+                        >
+                          <SelectValue
+                            placeholder={
+                              can("review.reassign") ? "Reassign reviewer" : "Reassignment restricted"
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {reviewers.map((r) => (
