@@ -122,7 +122,7 @@ export function SlaDrillDownSheet({
                     {request ? (
                       <>
                         <p className="mt-2 text-xs text-navy">
-                          {request.targetRef} · {request.reason}
+                          {request.objectRef} · {request.reason}
                         </p>
                         <TimelineList request={request} nowMs={nowMs} />
                         <Link
