@@ -162,10 +162,67 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [pushEvent],
   );
 
+  const saveScenario = useCallback<DemoState["saveScenario"]>(
+    (scenario) => {
+      const n = scenarioSeq + 1;
+      setScenarioSeq(n);
+      const saved: GapScenario = {
+        ...scenario,
+        id: `scn-${n}`,
+        runId: `GAP-SIM-${String(1000 + n)}`,
+        createdAt: now(),
+      };
+      setGapScenarios((prev) => [saved, ...prev]);
+      pushEvent({
+        actor: REVIEWER,
+        actorType: "Agent",
+        action: `Saved gap scenario run "${saved.name}"`,
+        objectType: "Gap scenario",
+        objectRef: saved.runId,
+        beforeAfter: `${saved.matrixName} -> coverage ${saved.coverage}% (${saved.blockers} blockers)`,
+        reason: leverSummary(saved.levers),
+        traceId: "trc-session",
+      });
+      return saved;
+    },
+    [pushEvent, scenarioSeq],
+  );
+
+  const deleteScenario = useCallback((id: string) => {
+    setGapScenarios((prev) => prev.filter((s) => s.id !== id));
+    setSelectedScenarioId((prev) => (prev === id ? null : prev));
+  }, []);
+
+  const selectScenario = useCallback<DemoState["selectScenario"]>(
+    (id) => {
+      setSelectedScenarioId(id);
+      setGapScenarios((prev) => {
+        const picked = prev.find((s) => s.id === id);
+        if (picked) {
+          pushEvent({
+            actor: REVIEWER,
+            actorType: "Human",
+            action: `Selected preferred gap scenario "${picked.name}"`,
+            objectType: "Gap scenario",
+            objectRef: picked.runId,
+            beforeAfter: `candidate -> preferred version (coverage ${picked.coverage}%)`,
+            reason: "Reviewer selected the best-performing synthetic scenario",
+            traceId: "trc-session",
+          });
+        }
+        return prev;
+      });
+    },
+    [pushEvent],
+  );
+
   const resetDemo = useCallback(() => {
     setClauseDecisions({});
     setSessionEvents([]);
     setAuditReference(null);
+    setGapScenarios([]);
+    setSelectedScenarioId(null);
+    setScenarioSeq(0);
     setGapRowStatusMap(
       Object.fromEntries(gapAnalyses.flatMap((g) => g.rows.map((r) => [r.id, r.reviewStatus] as const))),
     );
@@ -183,6 +240,11 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       auditReference,
       gapRowStatus,
       setGapRowStatus,
+      gapScenarios,
+      saveScenario,
+      deleteScenario,
+      selectedScenarioId,
+      selectScenario,
       reviewStatuses,
       reassign,
       auditEvents: [...sessionEvents, ...seedAuditEvents],
@@ -196,6 +258,11 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       auditReference,
       gapRowStatus,
       setGapRowStatus,
+      gapScenarios,
+      saveScenario,
+      deleteScenario,
+      selectedScenarioId,
+      selectScenario,
       reviewStatuses,
       reassign,
       sessionEvents,
