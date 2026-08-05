@@ -175,7 +175,12 @@ export function ReadinessEvidence() {
                     <StatusBadge label={a.state} tone={evidenceStateTone(a.state)} />
                   </TableCell>
                   <TableCell className="tnum text-right text-xs text-muted-foreground">
-                    {attachmentsFor(a.id).length}
+                    {(() => {
+                      const rows = attachmentsFor(a.id);
+                      const current = rows.filter((r) => r.status === "Current").length;
+                      const superseded = rows.length - current;
+                      return superseded > 0 ? `${current} (+${superseded} rev)` : current;
+                    })()}
                   </TableCell>
                   <TableCell className="text-right">
                     <PermissionButton
