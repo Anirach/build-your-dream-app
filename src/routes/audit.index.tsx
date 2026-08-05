@@ -629,7 +629,8 @@ function Page() {
                     </div>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </SectionCard>
