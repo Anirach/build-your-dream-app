@@ -13,6 +13,7 @@ import { seedAuditEvents } from "./audit";
 import { mappingRows } from "./mapping";
 import { gapAnalyses } from "./gaps";
 import { reviewQueue } from "./reviews";
+import { leverSummary, type GapScenario } from "./scenarios";
 import type { AuditEventView, MappingRowView, ReviewQueueItem, RoleId } from "./types";
 
 export interface ClauseDecision {
@@ -33,6 +34,11 @@ interface DemoState {
   auditReference: string | null;
   gapRowStatus: Record<string, "Not reviewed" | "Approved" | "Returned">;
   setGapRowStatus: (id: string, status: "Approved" | "Returned", reason?: string) => void;
+  gapScenarios: GapScenario[];
+  saveScenario: (scenario: Omit<GapScenario, "id" | "createdAt" | "runId">) => GapScenario;
+  deleteScenario: (id: string) => void;
+  selectedScenarioId: string | null;
+  selectScenario: (id: string) => void;
   reviewStatuses: Record<string, ReviewQueueItem["status"]>;
   reassign: (id: string, reviewer: string) => void;
   auditEvents: AuditEventView[];
