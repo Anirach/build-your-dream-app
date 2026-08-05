@@ -377,7 +377,7 @@ function RevisionRow({
         )}
         {a.status === "Superseded" && (
           <PermissionButton
-            permission="readiness.update"
+            permission="evidence.rollback"
             variant="outline"
             size="sm"
             onClick={() => {

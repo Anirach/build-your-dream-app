@@ -1458,7 +1458,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       const target = evidenceAttachments.find((a) => a.id === attachmentId);
       if (!target) return false;
       if (target.status === "Current") return false;
-      if (!authorise("readiness.update", "Evidence artifact", target.artifactId)) return false;
+      if (!authorise("evidence.rollback", "Evidence artifact", target.artifactId)) return false;
       const supersededCurrent = evidenceAttachments.find(
         (a) => a.lineageId === target.lineageId && a.status === "Current",
       );
