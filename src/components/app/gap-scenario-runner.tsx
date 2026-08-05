@@ -10,6 +10,7 @@ import {
   SegmentedBar,
 } from "@/components/app/primitives";
 import { DraftBadge, StateBadge, StatusBadge } from "@/components/app/status";
+import { PermissionButton } from "@/components/app/permission";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -99,6 +100,7 @@ export function GapScenarioRunner({ analysis }: { analysis: GapAnalysisSummary }
           });
           setRunning(false);
           setProgress(0);
+          if (!saved) return;
           setName("");
           toast.success("Scenario saved", {
             description: `${saved.name} · coverage ${saved.coverage}% · run ${saved.runId}`,
@@ -222,9 +224,9 @@ export function GapScenarioRunner({ analysis }: { analysis: GapAnalysisSummary }
               className="h-9"
             />
             <div className="flex flex-wrap gap-2 pt-1">
-              <Button size="sm" onClick={run} disabled={running}>
+              <PermissionButton permission="scenario.run" size="sm" onClick={run} disabled={running}>
                 {running ? "Running simulation…" : "Run and save scenario"}
-              </Button>
+              </PermissionButton>
               <Button
                 size="sm"
                 variant="outline"
@@ -385,7 +387,8 @@ export function GapScenarioRunner({ analysis }: { analysis: GapAnalysisSummary }
                       </TableCell>
                       <TableCell className="align-top text-right">
                         <div className="flex justify-end gap-1.5">
-                          <Button
+                          <PermissionButton
+                            permission="scenario.select"
                             size="sm"
                             variant={selected ? "secondary" : "outline"}
                             onClick={() => selectScenario(s.id)}
@@ -393,7 +396,7 @@ export function GapScenarioRunner({ analysis }: { analysis: GapAnalysisSummary }
                           >
                             <Check className="size-3.5" aria-hidden />
                             {selected ? "Selected" : "Pick this version"}
-                          </Button>
+                          </PermissionButton>
                           <Button
                             size="sm"
                             variant="ghost"

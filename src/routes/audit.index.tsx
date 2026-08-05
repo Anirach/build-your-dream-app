@@ -14,8 +14,10 @@ import {
   SectionCard,
 } from "@/components/app/primitives";
 import { StatusBadge } from "@/components/app/status";
+import { PermissionButton, RoleAccessNotice } from "@/components/app/permission";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { correctionTrace } from "@/demo-data/audit";
 import { useDemoState } from "@/demo-data/store";
 import type { AuditEventView } from "@/demo-data/types";
@@ -53,10 +55,12 @@ const actorMeta: Record<
 };
 
 function Page() {
-  const { auditEvents, resetDemo } = useDemoState();
+  const { auditEvents, resetDemo, recordCorrection } = useDemoState();
   const [actor, setActor] = useState<ActorFilter>("All");
   const [query, setQuery] = useState("");
   const [trace, setTrace] = useState<string | null>(null);
+  const [correctionRef, setCorrectionRef] = useState("EFF-2291");
+  const [correctionReason, setCorrectionReason] = useState("");
 
   const q = query.trim().toLowerCase();
   const events = useMemo(
@@ -135,6 +139,10 @@ function Page() {
         }
       />
 
+      <div className="mb-4">
+        <RoleAccessNotice permissions={["audit.correct"]} />
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Audit events" value={counts.total} hint="Seeded history plus this session's actions" />
         <MetricCard
@@ -193,6 +201,65 @@ function Page() {
               </li>
             ))}
           </ol>
+        </SectionCard>
+
+        <SectionCard
+          title="Record a correction by reversal"
+          description="Restricted action. A correction never edits history: it appends a reversing entry and a corrected entry under one trace ID."
+        >
+          <div className="grid gap-3 sm:max-w-xl">
+            <div className="space-y-1.5">
+              <label
+                className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+                htmlFor="correction-ref"
+              >
+                Object reference to correct
+              </label>
+              <Input
+                id="correction-ref"
+                value={correctionRef}
+                onChange={(e) => setCorrectionRef(e.target.value)}
+                placeholder="e.g. EFF-2291"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label
+                className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+                htmlFor="correction-reason"
+              >
+                Reason (required)
+              </label>
+              <Textarea
+                id="correction-reason"
+                rows={3}
+                value={correctionReason}
+                onChange={(e) => setCorrectionReason(e.target.value)}
+                placeholder="Explain what was wrong and what the corrected value should be."
+              />
+            </div>
+            <div>
+              <PermissionButton
+                permission="audit.correct"
+                size="sm"
+                disabled={correctionRef.trim() === "" || correctionReason.trim() === ""}
+                onClick={() => {
+                  const ok = recordCorrection({
+                    objectRef: correctionRef.trim(),
+                    reason: correctionReason.trim(),
+                    traceId: correctionTrace,
+                  });
+                  if (ok) {
+                    setCorrectionReason("");
+                    toast.success("Correction appended", {
+                      description: `Reversal and corrected entry recorded for ${correctionRef.trim()}.`,
+                    });
+                  }
+                }}
+              >
+                Append correction
+              </PermissionButton>
+            </div>
+          </div>
         </SectionCard>
 
         <SectionCard
