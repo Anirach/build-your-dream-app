@@ -316,22 +316,158 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [actor, authorise, pushEvent],
   );
 
-  const recordCorrection = useCallback<DemoState["recordCorrection"]>(
-    ({ objectRef, reason, traceId }) => {
-      if (!authorise("audit.correct", "Audit event", objectRef)) return false;
+  const requestCorrection = useCallback<DemoState["requestCorrection"]>(
+    ({ objectRef, objectType, proposedChange, reason, traceId }) => {
+      if (!authorise("correction.request", "Correction request", objectRef)) return null;
+      const n = correctionSeq + 1;
+      setCorrectionSeq(n);
+      const at = now();
+      const request: CorrectionRequest = {
+        id: `COR-${String(n).padStart(4, "0")}`,
+        objectRef,
+        objectType,
+        traceId,
+        proposedChange,
+        reason,
+        status: "Awaiting sign-off",
+        requestedBy: actor,
+        requestedAt: at,
+        history: [
+          { stage: "Requested", actor, role: roleName(role), at, note: reason },
+        ],
+      };
+      setCorrectionRequests((prev) => [request, ...prev]);
       pushEvent({
         actor,
         actorType: "Human",
-        action: "Recorded correction by reversal",
-        objectType: "Audit event",
-        objectRef,
-        beforeAfter: "original entry retained -> reversing entry appended",
+        action: "Raised correction request for sign-off",
+        objectType: "Correction request",
+        objectRef: `${request.id} (${objectRef})`,
+        beforeAfter: "no change yet -> awaiting reviewer sign-off",
         reason,
         traceId,
       });
+      return request;
+    },
+    [actor, authorise, correctionSeq, pushEvent, role],
+  );
+
+  /**
+   * Segregation of duties: the actor who raised a request may not countersign
+   * it, and a request may only be applied once it has been signed off.
+   */
+  const correctionBlocker = useCallback<DemoState["correctionBlocker"]>(
+    (request, step) => {
+      if (step === "signoff") {
+        if (request.status !== "Awaiting sign-off")
+          return `${request.id} is already ${request.status.toLowerCase()}.`;
+        if (request.requestedBy === actor)
+          return `Segregation of duties: ${actor} raised ${request.id} and cannot sign it off. Switch role to a different reviewer or auditor.`;
+        return null;
+      }
+      if (request.status === "Awaiting sign-off")
+        return `${request.id} needs reviewer sign-off before it can be applied.`;
+      if (request.status !== "Signed off")
+        return `${request.id} is already ${request.status.toLowerCase()}.`;
+      return null;
+    },
+    [actor],
+  );
+
+  const decideCorrection = useCallback(
+    (id: string, note: string, approve: boolean) => {
+      const request = correctionRequests.find((r) => r.id === id);
+      if (!request) return false;
+      if (!authorise("correction.signoff", "Correction request", id)) return false;
+      if (correctionBlocker(request, "signoff")) return false;
+      const at = now();
+      setCorrectionRequests((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: approve ? "Signed off" : "Rejected",
+                ...(approve ? { signedOffBy: actor } : {}),
+                history: [
+                  ...r.history,
+                  {
+                    stage: approve ? ("Sign-off" as const) : ("Rejected" as const),
+                    actor,
+                    role: roleName(role),
+                    at,
+                    note,
+                  },
+                ],
+              }
+            : r,
+        ),
+      );
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: approve ? "Signed off correction request" : "Rejected correction request",
+        objectType: "Correction request",
+        objectRef: `${request.id} (${request.objectRef})`,
+        beforeAfter: `Awaiting sign-off -> ${approve ? "Signed off" : "Rejected"}`,
+        reason: note,
+        traceId: request.traceId,
+      });
       return true;
     },
-    [actor, authorise, pushEvent],
+    [actor, authorise, correctionBlocker, correctionRequests, pushEvent, role],
+  );
+
+  const signOffCorrection = useCallback<DemoState["signOffCorrection"]>(
+    (id, note) => decideCorrection(id, note, true),
+    [decideCorrection],
+  );
+
+  const rejectCorrection = useCallback<DemoState["rejectCorrection"]>(
+    (id, note) => decideCorrection(id, note, false),
+    [decideCorrection],
+  );
+
+  const applyCorrection = useCallback<DemoState["applyCorrection"]>(
+    (id) => {
+      const request = correctionRequests.find((r) => r.id === id);
+      if (!request) return false;
+      if (!authorise("audit.correct", "Correction request", id)) return false;
+      if (correctionBlocker(request, "apply")) return false;
+      const at = now();
+      setCorrectionRequests((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: "Applied",
+                appliedBy: actor,
+                history: [
+                  ...r.history,
+                  {
+                    stage: "Applied" as const,
+                    actor,
+                    role: roleName(role),
+                    at,
+                    note: `Reversal appended after sign-off by ${r.signedOffBy ?? "reviewer"}.`,
+                  },
+                ],
+              }
+            : r,
+        ),
+      );
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: "Applied correction by reversal",
+        objectType: "Audit event",
+        objectRef: request.objectRef,
+        beforeAfter: "original entry retained -> reversing entry appended",
+        reason: `${request.reason} (request ${request.id}, signed off by ${request.signedOffBy ?? "reviewer"})`,
+        traceId: request.traceId,
+      });
+      return true;
+    },
+    [actor, authorise, correctionBlocker, correctionRequests, pushEvent, role],
   );
 
   const setRolePermission = useCallback<DemoState["setRolePermission"]>(
