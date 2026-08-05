@@ -14,6 +14,7 @@ import { mappingRows } from "./mapping";
 import { gapAnalyses } from "./gaps";
 import { reviewQueue } from "./reviews";
 import { leverSummary, type GapScenario } from "./scenarios";
+import { actorFor, can, denialMessage, type Permission } from "./permissions";
 import type { AuditEventView, MappingRowView, ReviewQueueItem, RoleId } from "./types";
 
 export interface ClauseDecision {
@@ -27,25 +28,32 @@ export interface ClauseDecision {
 interface DemoState {
   role: RoleId;
   setRole: (role: RoleId) => void;
+  /** Simulated authorisation check for the active role. */
+  can: (permission: Permission) => boolean;
+  /** Human-readable reason the active role is blocked. */
+  denialReason: (permission: Permission) => string;
+  actor: string;
   clauseDecisions: Record<string, ClauseDecision>;
-  decideClause: (row: MappingRowView, decision: Omit<ClauseDecision, "reviewer" | "at">) => void;
+  decideClause: (
+    row: MappingRowView,
+    decision: Omit<ClauseDecision, "reviewer" | "at">,
+  ) => boolean;
   reviewCompleted: boolean;
-  completeReview: (counts: Record<string, number>) => string;
+  completeReview: (counts: Record<string, number>) => string | null;
   auditReference: string | null;
   gapRowStatus: Record<string, "Not reviewed" | "Approved" | "Returned">;
-  setGapRowStatus: (id: string, status: "Approved" | "Returned", reason?: string) => void;
+  setGapRowStatus: (id: string, status: "Approved" | "Returned", reason?: string) => boolean;
   gapScenarios: GapScenario[];
-  saveScenario: (scenario: Omit<GapScenario, "id" | "createdAt" | "runId">) => GapScenario;
+  saveScenario: (scenario: Omit<GapScenario, "id" | "createdAt" | "runId">) => GapScenario | null;
   deleteScenario: (id: string) => void;
   selectedScenarioId: string | null;
-  selectScenario: (id: string) => void;
+  selectScenario: (id: string) => boolean;
   reviewStatuses: Record<string, ReviewQueueItem["status"]>;
-  reassign: (id: string, reviewer: string) => void;
+  reassign: (id: string, reviewer: string) => boolean;
+  recordCorrection: (input: { objectRef: string; reason: string; traceId: string }) => boolean;
   auditEvents: AuditEventView[];
   resetDemo: () => void;
 }
-
-const REVIEWER = "Dr. Maya Rahman";
 
 function now() {
   return new Date().toLocaleString("en-GB", {
