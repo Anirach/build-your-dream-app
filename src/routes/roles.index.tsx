@@ -244,6 +244,8 @@ function Page() {
           </div>
         </SectionCard>
 
+        <SignOffRulesCard />
+
         <NoticeBanner
           tone="warning"
           icon={<ShieldCheck className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />}
