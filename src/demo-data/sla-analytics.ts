@@ -249,3 +249,82 @@ export function breachTone(rate: number): "success" | "warning" | "danger" {
   if (rate >= 20) return "warning";
   return "success";
 }
+
+// ---------------------------------------------------------------------------
+// Data quality / sample size
+// ---------------------------------------------------------------------------
+
+/** Below this many hand-offs a breach rate is not statistically meaningful. */
+export const minReliableSample = 8;
+/** Below this many hand-offs the figure is indicative only. */
+export const minIndicativeSample = 4;
+
+export type SampleTier = "insufficient" | "indicative" | "reliable";
+
+export interface SampleQuality {
+  count: number;
+  tier: SampleTier;
+  label: string;
+  tone: "success" | "warning" | "danger" | "neutral";
+  /** ± percentage points on the breach rate (Wald interval, 95%). */
+  marginPct: number;
+  note: string;
+}
+
+/** Sample-size assessment for one aggregate, used to caveat the headline number. */
+export function sampleQuality(count: number, breachRate: number): SampleQuality {
+  const p = Math.min(Math.max(breachRate / 100, 0), 1);
+  const marginPct =
+    count === 0 ? 100 : Math.min(100, Math.round(196 * Math.sqrt((p * (1 - p)) / count)) / 1);
+  if (count < minIndicativeSample) {
+    return {
+      count,
+      tier: "insufficient",
+      label: `n=${count} · too few`,
+      tone: "danger",
+      marginPct,
+      note: `Only ${count} hand-off${count === 1 ? "" : "s"} — treat the breach rate as anecdotal, not a trend.`,
+    };
+  }
+  if (count < minReliableSample) {
+    return {
+      count,
+      tier: "indicative",
+      label: `n=${count} · indicative`,
+      tone: "warning",
+      marginPct,
+      note: `${count} hand-offs is a small sample (±${marginPct}pp on the breach rate).`,
+    };
+  }
+  return {
+    count,
+    tier: "reliable",
+    label: `n=${count}`,
+    tone: "success",
+    marginPct,
+    note: `${count} hand-offs (±${marginPct}pp on the breach rate).`,
+  };
+}
+
+export interface DataQuality {
+  total: number;
+  live: number;
+  synthetic: number;
+  /** Groups in the current breakdown that fall below the reliable threshold. */
+  smallGroups: number;
+  groups: number;
+  overall: SampleQuality;
+}
+
+/** Coverage and confidence summary for the records currently in scope. */
+export function dataQuality(records: SlaRecord[], groups: SlaAggregate[]): DataQuality {
+  const overallAgg = overallSla(records);
+  return {
+    total: records.length,
+    live: records.filter((r) => r.live).length,
+    synthetic: records.filter((r) => !r.live).length,
+    smallGroups: groups.filter((g) => g.count < minReliableSample).length,
+    groups: groups.length,
+    overall: sampleQuality(overallAgg.count, overallAgg.breachRate),
+  };
+}

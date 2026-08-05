@@ -35,9 +35,12 @@ import {
   byMandateType,
   byReviewerRole,
   byStage,
+  dataQuality,
   formatHours,
   liveSlaRecords,
+  minReliableSample,
   overallSla,
+  sampleQuality,
   slaHistory,
   weeklyTrend,
   type SlaAggregate,
@@ -95,6 +98,9 @@ function SlaAnalytics() {
   const trend = weeklyTrend(records);
   const liveCount = records.filter((r) => r.live).length;
   const referenceTarget = Math.round(overall.targetHours * 10) / 10;
+  const quality = dataQuality(records, groups);
+  const overallSample = quality.overall;
+  const thinWeeks = trend.filter((t) => t.count < minReliableSample);
 
   const scopeNote =
     stageFilter === "all" ? "all stages" : `${stageFilter} stage only`;
@@ -168,12 +174,12 @@ function SlaAnalytics() {
         <MetricCard
           label="Hand-offs measured"
           value={overall.count}
-          hint="Completed sign-off and apply stages in scope."
+          hint={`Completed sign-off and apply stages in scope · ${quality.live} live, ${quality.synthetic} synthetic.`}
         />
         <MetricCard
           label="Breach rate"
           value={`${Math.round(overall.breachRate)}%`}
-          hint="Share of hand-offs that exceeded their target."
+          hint={`Share of hand-offs past target · ±${overallSample.marginPct}pp at ${overallSample.label.replace(" · too few", "").replace(" · indicative", "")}.`}
           trend={{
             direction: overall.breachRate >= 20 ? "up" : "down",
             text: `${overall.breaches} of ${overall.count} past target`,
@@ -182,7 +188,11 @@ function SlaAnalytics() {
         <MetricCard
           label="Average turnaround"
           value={formatHours(overall.avgHours)}
-          hint="Mean elapsed time per hand-off."
+          hint={
+            overallSample.tier === "reliable"
+              ? "Mean elapsed time per hand-off."
+              : `Mean elapsed time per hand-off — ${overallSample.note}`
+          }
         />
         <MetricCard
           label="Worst hand-off"
@@ -190,6 +200,23 @@ function SlaAnalytics() {
           hint="Slowest single hand-off in scope."
         />
       </div>
+
+      {(quality.smallGroups > 0 || thinWeeks.length > 0 || overallSample.tier !== "reliable") && (
+        <div className="mt-4">
+        <NoticeBanner tone="warning">
+          <p className="font-semibold text-navy">Small-sample caution</p>
+          <p className="mt-0.5 text-muted-foreground">
+            {overallSample.tier !== "reliable" && `${overallSample.note} `}
+            {quality.smallGroups > 0 &&
+              `${quality.smallGroups} of ${quality.groups} breakdown group${quality.smallGroups === 1 ? "" : "s"} sit below ${minReliableSample} hand-offs. `}
+            {thinWeeks.length > 0 &&
+              `Thin weeks: ${thinWeeks.map((t) => `${t.week} (n=${t.count})`).join(", ")}. `}
+            Hollow dots, hatched bars and amber sample badges mark figures that are indicative
+            only.
+          </p>
+        </NoticeBanner>
+        </div>
+      )}
 
       <SlaDrillDownSheet
         drill={drill}
@@ -239,6 +266,12 @@ function SlaAnalytics() {
                   formatter={(value: number, name) =>
                     name === "breachRate" ? [`${value}%`, "Breach rate"] : [`${value}h`, "Avg turnaround"]
                   }
+                  labelFormatter={(label: string) => {
+                    const point = trend.find((t) => t.week === label);
+                    return point
+                      ? `${label} · n=${point.count}${point.count < minReliableSample ? " (small sample)" : ""}`
+                      : label;
+                  }}
                 />
                 <Line
                   yAxisId="rate"
@@ -246,7 +279,7 @@ function SlaAnalytics() {
                   dataKey="breachRate"
                   stroke="var(--destructive)"
                   strokeWidth={2}
-                  dot={{ r: 3, cursor: "pointer" }}
+                  dot={<SampleDot color="var(--destructive)" />}
                   activeDot={{ r: 5, cursor: "pointer" }}
                 />
                 <Line
@@ -256,7 +289,7 @@ function SlaAnalytics() {
                   stroke="var(--primary)"
                   strokeWidth={2}
                   strokeDasharray="4 3"
-                  dot={{ r: 3, cursor: "pointer" }}
+                  dot={<SampleDot color="var(--primary)" />}
                   activeDot={{ r: 5, cursor: "pointer" }}
                 />
               </LineChart>
@@ -271,7 +304,29 @@ function SlaAnalytics() {
               <span className="h-0.5 w-4 bg-primary" aria-hidden />
               <dt>Average turnaround</dt>
             </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="size-2.5 rounded-full border border-muted-foreground bg-card"
+                aria-hidden
+              />
+              <dt>Hollow dot = fewer than {minReliableSample} hand-offs that week</dt>
+            </div>
           </dl>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {trend.map((t) => (
+              <li key={t.week}>
+                <span
+                  className={
+                    t.count < minReliableSample
+                      ? "tnum inline-flex rounded-md border border-warning/30 bg-warning-surface px-2 py-0.5 text-xs text-warning"
+                      : "tnum inline-flex rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground"
+                  }
+                >
+                  {t.week} · n={t.count}
+                </span>
+              </li>
+            ))}
+          </ul>
         </SectionCard>
 
         <SectionCard
@@ -295,14 +350,23 @@ function SlaAnalytics() {
                 >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-navy">{s.label}</p>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge
+                      label={sampleQuality(s.count, s.breachRate).label}
+                      tone={sampleQuality(s.count, s.breachRate).tone}
+                    />
                   <StatusBadge
                     label={`${Math.round(s.breachRate)}% breach`}
                     tone={breachTone(s.breachRate)}
                   />
+                  </div>
                 </div>
                 <p className="tnum mt-1 text-xs text-muted-foreground">
                   Avg {formatHours(s.avgHours)} · avg target {Math.round(s.targetHours * 10) / 10}h · worst{" "}
                   {formatHours(s.worstHours)} · {s.count} hand-offs
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {sampleQuality(s.count, s.breachRate).note}
                 </p>
                 </button>
               </li>
@@ -361,6 +425,14 @@ function SlaAnalytics() {
                   fontSize: 12,
                 }}
                 formatter={(value: number) => [`${Math.round(value * 10) / 10}h`, "Avg turnaround"]}
+                labelFormatter={(label: string) => {
+                  const g = groups.find((x) => x.label === label);
+                  if (!g) return label;
+                  const q = sampleQuality(g.count, g.breachRate);
+                  return `${label} · n=${g.count} · ${Math.round(g.breachRate)}% breach ±${q.marginPct}pp${
+                    q.tier === "reliable" ? "" : " (small sample)"
+                  }`;
+                }}
               />
               <ReferenceLine
                 y={referenceTarget}
@@ -379,12 +451,22 @@ function SlaAnalytics() {
                           ? "var(--warning)"
                           : "var(--primary)"
                     }
+                    fillOpacity={g.count < minReliableSample ? 0.4 : 1}
+                    stroke={
+                      g.count < minReliableSample ? "var(--muted-foreground)" : undefined
+                    }
+                    strokeDasharray={g.count < minReliableSample ? "4 3" : undefined}
                   />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Faded, dashed bars carry fewer than {minReliableSample} hand-offs — read them as
+          indicative only. Sample size and the ±pp confidence range appear in the tooltip and the
+          table below.
+        </p>
 
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
@@ -398,6 +480,7 @@ function SlaAnalytics() {
                 <th className="py-2 pr-4 font-medium">Worst</th>
                 <th className="py-2 pr-4 font-medium">Breaches</th>
                 <th className="py-2 font-medium">Breach rate</th>
+                <th className="py-2 pl-4 font-medium">Sample</th>
               </tr>
             </thead>
             <tbody>
@@ -429,6 +512,15 @@ function SlaAnalytics() {
                       label={`${Math.round(g.breachRate)}%`}
                       tone={breachTone(g.breachRate)}
                     />
+                    <span className="tnum ml-2 text-xs text-muted-foreground">
+                      ±{sampleQuality(g.count, g.breachRate).marginPct}pp
+                    </span>
+                  </td>
+                  <td className="py-2.5 pl-4">
+                    <StatusBadge
+                      label={sampleQuality(g.count, g.breachRate).label}
+                      tone={sampleQuality(g.count, g.breachRate).tone}
+                    />
                   </td>
                 </tr>
               ))}
@@ -437,5 +529,32 @@ function SlaAnalytics() {
         </div>
       </SectionCard>
     </div>
+  );
+}
+
+/**
+ * Trend-line dot that encodes sample size: weeks with fewer than the reliable
+ * threshold of hand-offs render hollow so thin datapoints are visually obvious.
+ */
+function SampleDot(props: {
+  color?: string;
+  cx?: number;
+  cy?: number;
+  payload?: { count?: number; week?: string };
+}) {
+  const { cx, cy, color, payload } = props;
+  if (cx === undefined || cy === undefined) return null;
+  const thin = (payload?.count ?? 0) < minReliableSample;
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={thin ? 4 : 3}
+      fill={thin ? "var(--card)" : color}
+      stroke={thin ? "var(--muted-foreground)" : color}
+      strokeWidth={thin ? 1.5 : 1}
+      strokeDasharray={thin ? "2 2" : undefined}
+      style={{ cursor: "pointer" }}
+    />
   );
 }
