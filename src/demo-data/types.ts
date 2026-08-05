@@ -220,3 +220,121 @@ export interface AgentRunSummary {
   lowConfidence: number;
   invalidCitations: number;
 }
+
+/* ---------- Governed data intake and administration (concept-only) ---------- */
+
+export type IntakeRecordKind =
+  | "risk"
+  | "decision"
+  | "obligation"
+  | "deliverable"
+  | "evidence"
+  | "workpackage"
+  | "manday";
+
+export interface ProgrammeRecordDraft {
+  id: string;
+  kind: IntakeRecordKind;
+  title: string;
+  moduleCode: string;
+  owner: string;
+  effectiveDate: string;
+  source: string;
+  reason: string;
+  classification: string;
+  status: "Draft" | "Accepted";
+  /** Kind-specific synthetic fields shown in review and detail views. */
+  fields: Record<string, string>;
+  createdBy: string;
+  createdAt: string;
+  history: { at: string; actor: string; change: string; reason: string }[];
+}
+
+export interface ValidationIssueView {
+  row: number;
+  field: string;
+  value: string;
+  problem: string;
+  suggestion: string;
+  severity: "warning" | "rejected";
+}
+
+export interface ColumnMappingView {
+  sourceColumn: string;
+  sampleValue: string;
+  expectedField: string;
+  required: boolean;
+}
+
+export interface IntakeReceiptView {
+  id: string;
+  source: string;
+  dataType: string;
+  startedBy: string;
+  startedAt: string;
+  accepted: number;
+  warnings: number;
+  rejected: number;
+  noChange: number;
+  status: "Completed" | "Completed with warnings" | "Rejected";
+  reason: string;
+  mapping: ColumnMappingView[];
+  issues: ValidationIssueView[];
+  acknowledgedWarnings: boolean;
+  objectRefs: string[];
+  traceId: string;
+}
+
+export interface RegistryChangeProposalView {
+  id: string;
+  changeType: "Add module" | "Amend module" | "Retire module";
+  moduleCode: string;
+  moduleName: string;
+  estate: string;
+  crosswalk: string;
+  rationale: string;
+  sourceRef: string;
+  effectiveDate: string;
+  requestedBy: string;
+  requestedAt: string;
+  impact: string;
+  status: "Pending owner approval" | "Approved" | "Rejected";
+  validation: { check: string; result: "pass" | "warning" | "fail"; detail: string }[];
+  decidedBy?: string;
+  decidedAt?: string;
+  decisionReason?: string;
+}
+
+export interface LedgerEntryView {
+  id: string;
+  date: string;
+  consultant: string;
+  moduleCode: string;
+  workPackage: string;
+  days: number;
+  activity: string;
+  source: string;
+  kind: "Original" | "Reversal" | "Replacement";
+  linkedTo?: string;
+  recordedBy: string;
+  reason?: string;
+}
+
+export interface DataSourceStatusView {
+  id: string;
+  name: string;
+  authoritativeSource: string;
+  owner: string;
+  intakeMethod: string;
+  productionPath: string;
+  lastLoad: string;
+  accepted: number;
+  warnings: number;
+  rejected: number;
+  health: "Healthy" | "Attention" | "Source definition required";
+  description: string;
+  expectedFields: string[];
+  validationRules: string[];
+  receiptIds: string[];
+  importType?: string;
+}
