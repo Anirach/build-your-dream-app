@@ -35,9 +35,12 @@ import {
   byMandateType,
   byReviewerRole,
   byStage,
+  dataQuality,
   formatHours,
   liveSlaRecords,
+  minReliableSample,
   overallSla,
+  sampleQuality,
   slaHistory,
   weeklyTrend,
   type SlaAggregate,
@@ -95,6 +98,9 @@ function SlaAnalytics() {
   const trend = weeklyTrend(records);
   const liveCount = records.filter((r) => r.live).length;
   const referenceTarget = Math.round(overall.targetHours * 10) / 10;
+  const quality = dataQuality(records, groups);
+  const overallSample = quality.overall;
+  const thinWeeks = trend.filter((t) => t.count < minReliableSample);
 
   const scopeNote =
     stageFilter === "all" ? "all stages" : `${stageFilter} stage only`;
@@ -168,12 +174,12 @@ function SlaAnalytics() {
         <MetricCard
           label="Hand-offs measured"
           value={overall.count}
-          hint="Completed sign-off and apply stages in scope."
+          hint={`Completed sign-off and apply stages in scope · ${quality.live} live, ${quality.synthetic} synthetic.`}
         />
         <MetricCard
           label="Breach rate"
           value={`${Math.round(overall.breachRate)}%`}
-          hint="Share of hand-offs that exceeded their target."
+          hint={`Share of hand-offs past target · ±${overallSample.marginPct}pp at ${overallSample.label.replace(" · too few", "").replace(" · indicative", "")}.`}
           trend={{
             direction: overall.breachRate >= 20 ? "up" : "down",
             text: `${overall.breaches} of ${overall.count} past target`,
@@ -182,7 +188,11 @@ function SlaAnalytics() {
         <MetricCard
           label="Average turnaround"
           value={formatHours(overall.avgHours)}
-          hint="Mean elapsed time per hand-off."
+          hint={
+            overallSample.tier === "reliable"
+              ? "Mean elapsed time per hand-off."
+              : `Mean elapsed time per hand-off — ${overallSample.note}`
+          }
         />
         <MetricCard
           label="Worst hand-off"
@@ -190,6 +200,21 @@ function SlaAnalytics() {
           hint="Slowest single hand-off in scope."
         />
       </div>
+
+      {(quality.smallGroups > 0 || thinWeeks.length > 0 || overallSample.tier !== "reliable") && (
+        <NoticeBanner tone="warning" className="mt-4">
+          <p className="font-semibold text-navy">Small-sample caution</p>
+          <p className="mt-0.5 text-muted-foreground">
+            {overallSample.tier !== "reliable" && `${overallSample.note} `}
+            {quality.smallGroups > 0 &&
+              `${quality.smallGroups} of ${quality.groups} breakdown group${quality.smallGroups === 1 ? "" : "s"} sit below ${minReliableSample} hand-offs. `}
+            {thinWeeks.length > 0 &&
+              `Thin weeks: ${thinWeeks.map((t) => `${t.week} (n=${t.count})`).join(", ")}. `}
+            Hollow dots, hatched bars and amber sample badges mark figures that are indicative
+            only.
+          </p>
+        </NoticeBanner>
+      )}
 
       <SlaDrillDownSheet
         drill={drill}
