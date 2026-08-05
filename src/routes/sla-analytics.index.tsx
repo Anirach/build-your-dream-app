@@ -516,6 +516,15 @@ function SlaAnalytics() {
                       label={`${Math.round(g.breachRate)}%`}
                       tone={breachTone(g.breachRate)}
                     />
+                    <span className="tnum ml-2 text-xs text-muted-foreground">
+                      ±{sampleQuality(g.count, g.breachRate).marginPct}pp
+                    </span>
+                  </td>
+                  <td className="py-2.5 pl-4">
+                    <StatusBadge
+                      label={sampleQuality(g.count, g.breachRate).label}
+                      tone={sampleQuality(g.count, g.breachRate).tone}
+                    />
                   </td>
                 </tr>
               ))}
