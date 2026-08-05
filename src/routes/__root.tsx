@@ -84,23 +84,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "BDMS Intelligence - Commissioning Readiness Mockup" },
+      { title: "Executive Overview - BDMS Intelligence Mockup" },
       {
         name: "description",
         content:
-          "Concept mockup of BDMS Intelligence: hospital commissioning readiness, standards mapping and governance using synthetic data.",
+          "Programme-level commissioning readiness across 30 synthetic modules, with rule-based RAG explanations and overdue decisions.",
       },
       { name: "author", content: "BDMS" },
       { name: "robots", content: "noindex" },
-      { property: "og:title", content: "BDMS Intelligence - Commissioning Readiness Mockup" },
+      { property: "og:title", content: "Executive Overview - BDMS Intelligence Mockup" },
       {
         property: "og:description",
         content:
-          "Clickable concept mockup for hospital commissioning governance, RAG transparency and standards mapping review.",
+          "Programme-level commissioning readiness across 30 synthetic modules, with rule-based RAG explanations and overdue decisions.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Executive Overview - BDMS Intelligence Mockup" },
+      { name: "twitter:description", content: "Programme-level commissioning readiness across 30 synthetic modules, with rule-based RAG explanations and overdue decisions." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/34beb6f7-f277-4722-b2d9-66ac745398e5" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/34beb6f7-f277-4722-b2d9-66ac745398e5" },
     ],
     links: [
       {
@@ -113,7 +117,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
   shellComponent: RootShell,

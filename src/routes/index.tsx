@@ -53,7 +53,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Programme RAG status, module distribution and priority interventions in the BDMS Intelligence concept mockup.",
+          "Programme-level commissioning readiness across 30 synthetic modules, with rule-based RAG explanations and overdue decisions.",
       },
     ],
   }),
