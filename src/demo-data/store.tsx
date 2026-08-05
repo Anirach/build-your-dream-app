@@ -194,6 +194,7 @@ const DemoContext = createContext<DemoState | null>(null);
 
 export function DemoStateProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<RoleId>("reviewer");
+  const [signedIn, setSignedIn] = useState(false);
   const [clauseDecisions, setClauseDecisions] = useState<Record<string, ClauseDecision>>({});
   const [sessionEvents, setSessionEvents] = useState<AuditEventView[]>([]);
   const [auditReference, setAuditReference] = useState<string | null>(null);
