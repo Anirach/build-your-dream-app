@@ -18,6 +18,7 @@ import {
 } from "./evidence-register";
 import {
   placeholderChecksum,
+  lineageKey,
   validateEvidenceFile,
   formatBytes,
   type AttachmentKind,
