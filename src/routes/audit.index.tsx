@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bot, Check, Lock, RefreshCcw, RotateCcw, User, Workflow } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Bot, Check, Clock, Lock, RefreshCcw, RotateCcw, TimerReset, User, Workflow } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/page-header";
@@ -26,6 +26,12 @@ import {
   type CorrectionRequest,
 } from "@/demo-data/corrections";
 import { useDemoState } from "@/demo-data/store";
+import {
+  buildTimeline,
+  formatDuration,
+  slaSummary,
+  slaTargetHours,
+} from "@/demo-data/correction-timeline";
 import {
   mandateTypes,
   ruleFor,
@@ -111,6 +117,56 @@ function Stepper({ request }: { request: CorrectionRequest }) {
   );
 }
 
+/** Stage-by-stage timeline with timestamps and per-hand-off SLA indicators. */
+function CorrectionTimeline({
+  request,
+  nowMs,
+}: {
+  request: CorrectionRequest;
+  nowMs: number;
+}) {
+  const rows = buildTimeline(request, nowMs);
+  return (
+    <ol className="mt-3 space-y-3 border-t border-border pt-3">
+      {rows.map((row) => (
+        <li key={row.key} className="flex gap-3">
+          <span
+            className={cn(
+              "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border",
+              row.pending
+                ? "border-dashed border-border bg-secondary text-muted-foreground"
+                : "border-success/25 bg-success-surface text-success",
+            )}
+            aria-hidden
+          >
+            {row.pending ? <Clock className="size-3.5" /> : <Check className="size-3.5" />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-navy">{row.label}</span>
+              <span className="tnum text-xs text-muted-foreground">{row.at}</span>
+              {row.elapsedMs !== null && (
+                <StatusBadge
+                  label={
+                    row.targetHours === null
+                      ? formatDuration(row.elapsedMs)
+                      : `${formatDuration(row.elapsedMs)} / ${row.targetHours}h target`
+                  }
+                  tone={row.tone}
+                />
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {row.pending ? row.role : `${row.actor} (${row.role})`}
+              {row.note ? ` · ${row.note}` : ""}
+            </p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function Page() {
   const {
     auditEvents,
@@ -133,11 +189,19 @@ function Page() {
   const [correctionReason, setCorrectionReason] = useState("");
   const [mandateType, setMandateType] = useState<MandateType>("Audit event");
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  // Keeps the in-stage waiting time and SLA badges ticking during the demo.
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 30000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const activeRule = ruleFor(signOffRules, mandateType);
 
   const pendingSignOff = correctionRequests.filter((r) => r.status === "Awaiting sign-off").length;
   const awaitingApply = correctionRequests.filter((r) => r.status === "Signed off").length;
+  const slaBreaches = correctionRequests.filter((r) => slaSummary(r, nowMs).breached).length;
 
   const q = query.trim().toLowerCase();
   const events = useMemo(
@@ -241,7 +305,7 @@ function Page() {
         <MetricCard
           label="Corrections in flight"
           value={pendingSignOff + awaitingApply}
-          hint={`${pendingSignOff} awaiting sign-off, ${awaitingApply} signed off and ready to apply`}
+          hint={`${pendingSignOff} awaiting sign-off, ${awaitingApply} ready to apply · ${slaBreaches} past SLA target`}
         />
       </div>
 
@@ -417,7 +481,9 @@ function Page() {
             />
           ) : (
             <ul className="space-y-4">
-              {correctionRequests.map((r) => (
+              {correctionRequests.map((r) => {
+                const sla = slaSummary(r, nowMs);
+                return (
                 <li key={r.id} className="rounded-lg border border-border px-4 py-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -431,6 +497,7 @@ function Page() {
                             r.signOffs.length >= r.rule.requiredApprovals ? "success" : "warning"
                           }
                         />
+                        <StatusBadge label={sla.label} tone={sla.tone} />
                       </div>
                       <p className="mt-1.5 text-sm font-semibold text-navy">{r.proposedChange}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
@@ -462,16 +529,16 @@ function Page() {
                               : r.signOffs.map((s) => `${s.actor} (${s.role})`).join("; "),
                         },
                         { label: "Applied by", value: r.appliedBy ?? "Not applied" },
+                        {
+                          label: "Turnaround",
+                          value:
+                            sla.totalMs === null
+                              ? "Not available"
+                              : `${formatDuration(sla.totalMs)} since raised · targets: sign-off ${slaTargetHours["Sign-off"]}h, apply ${slaTargetHours.Applied}h`,
+                        },
                       ]}
                     />
-                    <ol className="mt-3 space-y-1.5 border-t border-border pt-3">
-                      {r.history.map((h, i) => (
-                        <li key={`${r.id}-${i}`} className="text-xs text-muted-foreground">
-                          <span className="font-semibold text-navy">{h.stage}</span> · {h.actor} (
-                          {h.role}) · {h.at} · {h.note}
-                        </li>
-                      ))}
-                    </ol>
+                    <CorrectionTimeline request={r} nowMs={nowMs} />
                   </div>
 
                   {(r.status === "Awaiting sign-off" || r.status === "Signed off") && (
@@ -562,7 +629,8 @@ function Page() {
                     </div>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
         </SectionCard>
