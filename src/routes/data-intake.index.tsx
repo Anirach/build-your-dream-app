@@ -3,6 +3,7 @@ import { Database, FileInput } from "lucide-react";
 import { useState } from "react";
 
 import { PageHeader } from "@/components/app/page-header";
+import { OwnerNotificationsCard, ProposalActivityFeed } from "@/components/app/intake-activity";
 import { RoleAccessNotice } from "@/components/app/permission";
 import {
   CorrectionModal,
@@ -258,6 +259,9 @@ function DataIntakePage() {
             registry and appear on the Programme pages.
           </p>
         </SectionCard>
+
+        <OwnerNotificationsCard />
+        <ProposalActivityFeed />
       </div>
 
       <DataSourceDetailDrawer source={source} onClose={() => setSource(null)} />

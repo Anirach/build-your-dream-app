@@ -39,6 +39,12 @@ import {
 } from "./intake";
 import { leverSummary, type GapScenario } from "./scenarios";
 import {
+  seedIntakeActivity,
+  seedIntakeNotifications,
+  type IntakeActivityItem,
+  type IntakeNotificationView,
+} from "./intake-notifications";
+import {
   actorFor,
   baselineMatrix,
   denialMessage,
@@ -157,6 +163,15 @@ interface DemoState {
     > & { validation: RegistryChangeProposalView["validation"] },
   ) => RegistryChangeProposalView | null;
   decideProposal: (id: string, approve: boolean, reason: string) => boolean;
+  /** Activity feed for registry proposal reviews and decisions. */
+  intakeActivity: IntakeActivityItem[];
+  /** Owner and requester notifications raised by proposal events. */
+  intakeNotifications: IntakeNotificationView[];
+  unreadNotifications: number;
+  markNotificationRead: (id: string, read?: boolean) => void;
+  markAllNotificationsRead: () => void;
+  /** Nudge the current owner queue for a still-pending proposal. */
+  remindProposalOwner: (id: string) => boolean;
   auditEvents: AuditEventView[];
   resetDemo: () => void;
 }
@@ -210,6 +225,11 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   const [receiptSeq, setReceiptSeq] = useState(42);
   const [proposals, setProposals] = useState<RegistryChangeProposalView[]>(seedProposals);
   const [proposalSeq, setProposalSeq] = useState(7);
+  const [activityItems, setActivityItems] = useState<IntakeActivityItem[]>([]);
+  const [notifications, setNotifications] =
+    useState<IntakeNotificationView[]>(seedIntakeNotifications);
+  const [notifySeq, setNotifySeq] = useState(3);
+  const [activitySeq, setActivitySeq] = useState(7);
 
   const actor = roleAssignments[role] ?? actorFor(role);
 
@@ -881,6 +901,90 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [actor, authorise, ledger, ledgerSeq, pushEvent],
   );
 
+  /** Append one or more activity items for the intake feed. */
+  const pushActivity = useCallback(
+    (
+      entries: {
+        kind: IntakeActivityItem["kind"];
+        actor: string;
+        proposalId?: string;
+        title: string;
+        detail: string;
+      }[],
+    ) => {
+      const at = now();
+      setActivitySeq((s) => s + entries.length);
+      setActivityItems((prev) => {
+        const base = activitySeq;
+        const items: IntakeActivityItem[] = entries.map((e, i) => ({
+          id: `act-s-${String(base + i + 1).padStart(4, "0")}`,
+          kind: e.kind,
+          at,
+          actor: e.actor,
+          ...(e.proposalId ? { proposalId: e.proposalId } : {}),
+          title: e.title,
+          detail: e.detail,
+          session: true,
+        }));
+        return [...items.reverse(), ...prev];
+      });
+    },
+    [activitySeq],
+  );
+
+  /** Deliver a notification to each named governance role. */
+  const raiseNotifications = useCallback(
+    (
+      targets: RoleId[],
+      input: {
+        kind: IntakeNotificationView["kind"];
+        proposalId: string;
+        title: string;
+        body: string;
+      },
+    ) => {
+      if (targets.length === 0) return;
+      const at = now();
+      setNotifySeq((s) => s + targets.length);
+      setNotifications((prev) => {
+        const base = notifySeq;
+        const items: IntakeNotificationView[] = targets.map((r, i) => ({
+          id: `ntf-s-${String(base + i + 1).padStart(4, "0")}`,
+          kind: input.kind,
+          at,
+          recipientRole: r,
+          recipient: roleAssignments[r] ?? actorFor(r),
+          proposalId: input.proposalId,
+          title: input.title,
+          body: input.body,
+          read: false,
+          session: true,
+        }));
+        return [...items, ...prev];
+      });
+    },
+    [notifySeq, roleAssignments],
+  );
+
+  /** Raise a notification for every role holding a permission. */
+  const notifyRoles = useCallback(
+    (
+      permission: Permission,
+      input: {
+        kind: IntakeNotificationView["kind"];
+        proposalId: string;
+        title: string;
+        body: string;
+      },
+    ) => {
+      const targets = (Object.keys(permissionMatrix) as RoleId[]).filter((r) =>
+        permissionMatrix[r].includes(permission),
+      );
+      raiseNotifications(targets, input);
+    },
+    [permissionMatrix, raiseNotifications],
+  );
+
   const commitImport = useCallback<DemoState["commitImport"]>(
     ({ importType, sourceName, reason, mapping, rows, acknowledgedWarnings }) => {
       if (!authorise("intake.import", "Import run", importType)) return null;
@@ -940,6 +1044,31 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
         status: "Pending owner approval",
       };
       setProposals((prev) => [proposal, ...prev]);
+      const warnings = proposal.validation.filter((v) => v.result !== "pass").length;
+      pushActivity([
+        {
+          kind: "proposal.submitted",
+          actor,
+          proposalId: proposal.id,
+          title: `${proposal.changeType} proposal raised`,
+          detail: `${proposal.moduleCode} ${proposal.moduleName} sent for owner approval. Source ${proposal.sourceRef}.`,
+        },
+        {
+          kind: "proposal.validation",
+          actor: "Registry validation agent",
+          proposalId: proposal.id,
+          title: "Validation checks completed",
+          detail: `${proposal.validation.length - warnings} passed, ${warnings} needing attention. No registry change applied yet.`,
+        },
+      ]);
+      notifyRoles("registry.approve", {
+        kind: "review.requested",
+        proposalId: proposal.id,
+        title: `${proposal.id} awaiting your approval`,
+        body: `${actor} proposed ${proposal.changeType.toLowerCase()} for ${proposal.moduleCode} ${proposal.moduleName}.${
+          warnings > 0 ? ` ${warnings} validation item(s) need attention.` : ""
+        }`,
+      });
       pushEvent({
         actor,
         actorType: "Human",
@@ -952,7 +1081,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       });
       return proposal;
     },
-    [actor, authorise, proposalSeq, pushEvent],
+    [actor, authorise, notifyRoles, proposalSeq, pushActivity, pushEvent],
   );
 
   const decideProposal = useCallback<DemoState["decideProposal"]>(
@@ -1018,10 +1147,72 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
         reason: `${reason} (requested by ${proposal.requestedBy}, decided by ${actor} at ${at})`,
         traceId: "trc-registry",
       });
+      pushActivity([
+        {
+          kind: approve ? "proposal.approved" : "proposal.rejected",
+          actor,
+          proposalId: proposal.id,
+          title: `${proposal.changeType} proposal ${approve ? "approved" : "rejected"}`,
+          detail: approve
+            ? `${proposal.moduleCode} ${proposal.moduleName} applied to the session registry. Reason: ${reason}`
+            : `${proposal.moduleCode} returned to ${proposal.requestedBy}. Reason: ${reason}`,
+        },
+      ]);
+      const requesterRole = (Object.keys(roleAssignments) as RoleId[]).find(
+        (r) => roleAssignments[r] === proposal.requestedBy,
+      );
+      raiseNotifications(requesterRole ? [requesterRole] : ["lead"], {
+        kind: "decision.recorded",
+        proposalId: proposal.id,
+        title: `${proposal.id} ${approve ? "approved" : "rejected"}`,
+        body: `${actor} ${approve ? "approved" : "rejected"} your ${proposal.changeType.toLowerCase()} request for ${proposal.moduleCode}. Reason: ${reason}`,
+      });
       return true;
     },
-    [actor, authorise, proposals, pushEvent],
+    [actor, authorise, proposals, pushActivity, pushEvent, raiseNotifications, roleAssignments],
   );
+
+  const remindProposalOwner = useCallback<DemoState["remindProposalOwner"]>(
+    (id) => {
+      const proposal = proposals.find((p) => p.id === id);
+      if (!proposal || proposal.status !== "Pending owner approval") return false;
+      notifyRoles("registry.approve", {
+        kind: "review.reminder",
+        proposalId: proposal.id,
+        title: `Reminder: ${proposal.id} still awaiting approval`,
+        body: `${actor} nudged the owner queue for ${proposal.changeType.toLowerCase()} of ${proposal.moduleCode} ${proposal.moduleName}.`,
+      });
+      pushActivity([
+        {
+          kind: "notification.sent",
+          actor,
+          proposalId: proposal.id,
+          title: "Owner reminded",
+          detail: "A reminder notification was delivered to every role that can approve registry changes.",
+        },
+      ]);
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: "Sent owner reminder for registry change proposal",
+        objectType: "Registry change proposal",
+        objectRef: `${proposal.id} (${proposal.moduleCode})`,
+        beforeAfter: "pending owner approval -> pending, reminder notification appended",
+        reason: "Owner decision outstanding",
+        traceId: "trc-registry",
+      });
+      return true;
+    },
+    [actor, notifyRoles, proposals, pushActivity, pushEvent],
+  );
+
+  const markNotificationRead = useCallback<DemoState["markNotificationRead"]>((id, read = true) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read } : n)));
+  }, []);
+
+  const markAllNotificationsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => (n.recipientRole === role ? { ...n, read: true } : n)));
+  }, [role]);
 
   const resetDemo = useCallback(() => {
     setPermissionMatrix(baselineMatrix());
@@ -1052,6 +1243,10 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     setReceiptSeq(42);
     setProposals(seedProposals);
     setProposalSeq(7);
+    setActivityItems([]);
+    setNotifications(seedIntakeNotifications);
+    setNotifySeq(3);
+    setActivitySeq(7);
   }, []);
 
   const value = useMemo<DemoState>(
@@ -1102,6 +1297,12 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       proposals,
       submitProposal,
       decideProposal,
+      intakeActivity: [...activityItems, ...seedIntakeActivity],
+      intakeNotifications: notifications,
+      unreadNotifications: notifications.filter((n) => n.recipientRole === role && !n.read).length,
+      markNotificationRead,
+      markAllNotificationsRead,
+      remindProposalOwner,
       auditEvents: [...sessionEvents, ...seedAuditEvents],
       resetDemo,
     }),
@@ -1149,6 +1350,11 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       proposals,
       submitProposal,
       decideProposal,
+      activityItems,
+      notifications,
+      markNotificationRead,
+      markAllNotificationsRead,
+      remindProposalOwner,
       sessionEvents,
       resetDemo,
     ],
