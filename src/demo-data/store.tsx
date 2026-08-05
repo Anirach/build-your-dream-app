@@ -549,6 +549,8 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     setGapScenarios([]);
     setSelectedScenarioId(null);
     setScenarioSeq(0);
+    setCorrectionRequests(seedCorrectionRequests);
+    setCorrectionSeq(41);
     setGapRowStatusMap(
       Object.fromEntries(gapAnalyses.flatMap((g) => g.rows.map((r) => [r.id, r.reviewStatus] as const))),
     );
@@ -576,7 +578,12 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       selectScenario,
       reviewStatuses,
       reassign,
-      recordCorrection,
+      correctionRequests,
+      requestCorrection,
+      signOffCorrection,
+      rejectCorrection,
+      applyCorrection,
+      correctionBlocker,
       permissionMatrix,
       setRolePermission,
       resetRolePermissions,
@@ -603,7 +610,12 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       selectScenario,
       reviewStatuses,
       reassign,
-      recordCorrection,
+      correctionRequests,
+      requestCorrection,
+      signOffCorrection,
+      rejectCorrection,
+      applyCorrection,
+      correctionBlocker,
       permissionMatrix,
       setRolePermission,
       resetRolePermissions,
