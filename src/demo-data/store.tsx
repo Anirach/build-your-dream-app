@@ -77,6 +77,10 @@ export interface ClauseDecision {
 interface DemoState {
   role: RoleId;
   setRole: (role: RoleId) => void;
+  /** Simulated session sign-in for the mockup. No real credentials. */
+  signedIn: boolean;
+  signIn: (role: RoleId) => void;
+  signOut: () => void;
   /** Simulated authorisation check for the active role. */
   can: (permission: Permission) => boolean;
   /** Human-readable reason the active role is blocked. */
