@@ -75,14 +75,18 @@ export function actorFor(role: RoleId) {
 }
 
 /** Roles allowed to perform a permission, for denial messaging. */
-export function rolesWith(permission: Permission) {
-  return (Object.keys(rolePermissions) as RoleId[])
-    .filter((r) => can(r, permission))
+export function rolesWith(permission: Permission, matrix: PermissionMatrix = rolePermissions) {
+  return (Object.keys(matrix) as RoleId[])
+    .filter((r) => matrix[r].includes(permission))
     .map(roleName);
 }
 
-export function denialMessage(role: RoleId, permission: Permission) {
-  const allowed = rolesWith(permission);
+export function denialMessage(
+  role: RoleId,
+  permission: Permission,
+  matrix: PermissionMatrix = rolePermissions,
+) {
+  const allowed = rolesWith(permission, matrix);
   return `${roleName(role)} is not authorised to ${permissionLabels[permission].toLowerCase()}. ${
     allowed.length === 0
       ? "No role in this mockup holds that permission."
