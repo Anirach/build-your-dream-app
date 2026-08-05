@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/page-header";
 import { GapScenarioRunner } from "@/components/app/gap-scenario-runner";
+import { PermissionButton, RoleAccessNotice } from "@/components/app/permission";
 import {
   CitationChip,
   DemoDownloadButton,
