@@ -89,8 +89,10 @@ export function ReadinessEvidence() {
         <MetricCard label="Missing" value={missing} hint="No reference recorded yet" />
         <MetricCard
           label="Files attached"
-          value={evidenceAttachments.length}
-          hint={`${correction} artifact(s) need correction`}
+          value={evidenceAttachments.filter((f) => f.status === "Current").length}
+          hint={`${
+            evidenceAttachments.filter((f) => f.status === "Superseded").length
+          } superseded revision(s) retained · ${correction} artifact(s) need correction`}
         />
       </div>
 
@@ -175,7 +177,12 @@ export function ReadinessEvidence() {
                     <StatusBadge label={a.state} tone={evidenceStateTone(a.state)} />
                   </TableCell>
                   <TableCell className="tnum text-right text-xs text-muted-foreground">
-                    {attachmentsFor(a.id).length}
+                    {(() => {
+                      const rows = attachmentsFor(a.id);
+                      const current = rows.filter((r) => r.status === "Current").length;
+                      const superseded = rows.length - current;
+                      return superseded > 0 ? `${current} (+${superseded} rev)` : current;
+                    })()}
                   </TableCell>
                   <TableCell className="text-right">
                     <PermissionButton
