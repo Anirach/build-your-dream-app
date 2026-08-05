@@ -14,6 +14,7 @@ import { Route as AuditIndexRouteImport } from './routes/audit.index'
 import { Route as GapAnalysisIndexRouteImport } from './routes/gap-analysis.index'
 import { Route as ProgrammeIndexRouteImport } from './routes/programme.index'
 import { Route as ReviewsIndexRouteImport } from './routes/reviews.index'
+import { Route as RolesIndexRouteImport } from './routes/roles.index'
 import { Route as StandardsIndexRouteImport } from './routes/standards.index'
 import { Route as StandardsStandardIdRouteImport } from './routes/standards.$standardId'
 import { Route as WorkbenchIndexRouteImport } from './routes/workbench.index'
@@ -42,6 +43,11 @@ const ProgrammeIndexRoute = ProgrammeIndexRouteImport.update({
 const ReviewsIndexRoute = ReviewsIndexRouteImport.update({
   id: '/reviews/',
   path: '/reviews/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RolesIndexRoute = RolesIndexRouteImport.update({
+  id: '/roles/',
+  path: '/roles/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StandardsIndexRoute = StandardsIndexRouteImport.update({
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/gap-analysis/': typeof GapAnalysisIndexRoute
   '/programme/': typeof ProgrammeIndexRoute
   '/reviews/': typeof ReviewsIndexRoute
+  '/roles/': typeof RolesIndexRoute
   '/standards/': typeof StandardsIndexRoute
   '/workbench/': typeof WorkbenchIndexRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/gap-analysis': typeof GapAnalysisIndexRoute
   '/programme': typeof ProgrammeIndexRoute
   '/reviews': typeof ReviewsIndexRoute
+  '/roles': typeof RolesIndexRoute
   '/standards': typeof StandardsIndexRoute
   '/workbench': typeof WorkbenchIndexRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/gap-analysis/': typeof GapAnalysisIndexRoute
   '/programme/': typeof ProgrammeIndexRoute
   '/reviews/': typeof ReviewsIndexRoute
+  '/roles/': typeof RolesIndexRoute
   '/standards/': typeof StandardsIndexRoute
   '/workbench/': typeof WorkbenchIndexRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/gap-analysis/'
     | '/programme/'
     | '/reviews/'
+    | '/roles/'
     | '/standards/'
     | '/workbench/'
     | '/programme/modules/$moduleId'
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/gap-analysis'
     | '/programme'
     | '/reviews'
+    | '/roles'
     | '/standards'
     | '/workbench'
     | '/programme/modules/$moduleId'
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/gap-analysis/'
     | '/programme/'
     | '/reviews/'
+    | '/roles/'
     | '/standards/'
     | '/workbench/'
     | '/programme/modules/$moduleId'
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   GapAnalysisIndexRoute: typeof GapAnalysisIndexRoute
   ProgrammeIndexRoute: typeof ProgrammeIndexRoute
   ReviewsIndexRoute: typeof ReviewsIndexRoute
+  RolesIndexRoute: typeof RolesIndexRoute
   StandardsIndexRoute: typeof StandardsIndexRoute
   WorkbenchIndexRoute: typeof WorkbenchIndexRoute
   ProgrammeModulesModuleIdRoute: typeof ProgrammeModulesModuleIdRoute
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReviewsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/roles/': {
+      id: '/roles/'
+      path: '/roles'
+      fullPath: '/roles/'
+      preLoaderRoute: typeof RolesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/standards/': {
       id: '/standards/'
       path: '/standards'
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   GapAnalysisIndexRoute: GapAnalysisIndexRoute,
   ProgrammeIndexRoute: ProgrammeIndexRoute,
   ReviewsIndexRoute: ReviewsIndexRoute,
+  RolesIndexRoute: RolesIndexRoute,
   StandardsIndexRoute: StandardsIndexRoute,
   WorkbenchIndexRoute: WorkbenchIndexRoute,
   ProgrammeModulesModuleIdRoute: ProgrammeModulesModuleIdRoute,

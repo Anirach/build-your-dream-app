@@ -14,7 +14,14 @@ import { mappingRows } from "./mapping";
 import { gapAnalyses } from "./gaps";
 import { reviewQueue } from "./reviews";
 import { leverSummary, type GapScenario } from "./scenarios";
-import { actorFor, can, denialMessage, type Permission } from "./permissions";
+import {
+  actorFor,
+  baselineMatrix,
+  denialMessage,
+  roleName,
+  type Permission,
+  type PermissionMatrix,
+} from "./permissions";
 import type { AuditEventView, MappingRowView, ReviewQueueItem, RoleId } from "./types";
 
 export interface ClauseDecision {
@@ -51,6 +58,12 @@ interface DemoState {
   reviewStatuses: Record<string, ReviewQueueItem["status"]>;
   reassign: (id: string, reviewer: string) => boolean;
   recordCorrection: (input: { objectRef: string; reason: string; traceId: string }) => boolean;
+  /** Session-editable permission matrix and actor assignments. */
+  permissionMatrix: PermissionMatrix;
+  setRolePermission: (role: RoleId, permission: Permission, granted: boolean) => boolean;
+  resetRolePermissions: (role: RoleId) => boolean;
+  roleAssignments: Record<RoleId, string>;
+  assignRoleActor: (role: RoleId, personName: string) => boolean;
   auditEvents: AuditEventView[];
   resetDemo: () => void;
 }
@@ -85,19 +98,28 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   const [gapScenarios, setGapScenarios] = useState<GapScenario[]>([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [scenarioSeq, setScenarioSeq] = useState(0);
+  const [permissionMatrix, setPermissionMatrix] = useState<PermissionMatrix>(baselineMatrix);
+  const [roleAssignments, setRoleAssignments] = useState<Record<RoleId, string>>(() =>
+    Object.fromEntries(
+      (Object.keys(baselineMatrix()) as RoleId[]).map((r) => [r, actorFor(r)] as const),
+    ) as Record<RoleId, string>,
+  );
 
-  const actor = actorFor(role);
+  const actor = roleAssignments[role] ?? actorFor(role);
 
-  const allows = useCallback((permission: Permission) => can(role, permission), [role]);
+  const allows = useCallback(
+    (permission: Permission) => permissionMatrix[role].includes(permission),
+    [permissionMatrix, role],
+  );
   const denialReason = useCallback(
-    (permission: Permission) => denialMessage(role, permission),
-    [role],
+    (permission: Permission) => denialMessage(role, permission, permissionMatrix),
+    [permissionMatrix, role],
   );
 
   /** Central authorisation gate: denied attempts are recorded, never applied. */
   const authorise = useCallback(
     (permission: Permission, objectType: string, objectRef: string) => {
-      if (can(role, permission)) return true;
+      if (permissionMatrix[role].includes(permission)) return true;
       setSeq((s) => s + 1);
       setSessionEvents((prev) => [
         {
@@ -109,14 +131,14 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
           objectType,
           objectRef,
           beforeAfter: "no change - access denied",
-          reason: denialMessage(role, permission),
+          reason: denialMessage(role, permission, permissionMatrix),
           traceId: "trc-session",
         },
         ...prev,
       ]);
       return false;
     },
-    [actor, role, seq],
+    [actor, permissionMatrix, role, seq],
   );
 
   const pushEvent = useCallback(
@@ -292,7 +314,79 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [actor, authorise, pushEvent],
   );
 
+  const setRolePermission = useCallback<DemoState["setRolePermission"]>(
+    (targetRole, permission, granted) => {
+      if (!authorise("roles.manage", "Role permission", `${targetRole}:${permission}`)) return false;
+      setPermissionMatrix((prev) => {
+        const current = prev[targetRole];
+        const next = granted
+          ? current.includes(permission)
+            ? current
+            : [...current, permission]
+          : current.filter((p) => p !== permission);
+        return { ...prev, [targetRole]: next };
+      });
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `${granted ? "Granted" : "Revoked"} permission for ${roleName(targetRole)}`,
+        objectType: "Role permission",
+        objectRef: `${targetRole}:${permission}`,
+        beforeAfter: `${granted ? "denied -> granted" : "granted -> denied"}`,
+        reason: `${actor} changed the simulated permission matrix`,
+        traceId: "trc-session",
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent],
+  );
+
+  const resetRolePermissions = useCallback<DemoState["resetRolePermissions"]>(
+    (targetRole) => {
+      if (!authorise("roles.manage", "Role permission", targetRole)) return false;
+      setPermissionMatrix((prev) => ({ ...prev, [targetRole]: baselineMatrix()[targetRole] }));
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Reset permissions for ${roleName(targetRole)}`,
+        objectType: "Role permission",
+        objectRef: targetRole,
+        beforeAfter: "session changes -> baseline mandate",
+        reason: `${actor} restored the baseline permission set`,
+        traceId: "trc-session",
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent],
+  );
+
+  const assignRoleActor = useCallback<DemoState["assignRoleActor"]>(
+    (targetRole, personName) => {
+      if (!authorise("roles.manage", "Role assignment", targetRole)) return false;
+      const before = roleAssignments[targetRole] ?? actorFor(targetRole);
+      setRoleAssignments((prev) => ({ ...prev, [targetRole]: personName }));
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Assigned ${roleName(targetRole)}`,
+        objectType: "Role assignment",
+        objectRef: targetRole,
+        beforeAfter: `${before} -> ${personName}`,
+        reason: `${actor} updated the simulated role holder`,
+        traceId: "trc-session",
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent, roleAssignments],
+  );
+
   const resetDemo = useCallback(() => {
+    setPermissionMatrix(baselineMatrix());
+    setRoleAssignments(
+      Object.fromEntries(
+        (Object.keys(baselineMatrix()) as RoleId[]).map((r) => [r, actorFor(r)] as const),
+      ) as Record<RoleId, string>,
+    );
     setClauseDecisions({});
     setSessionEvents([]);
     setAuditReference(null);
@@ -327,6 +421,11 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       reviewStatuses,
       reassign,
       recordCorrection,
+      permissionMatrix,
+      setRolePermission,
+      resetRolePermissions,
+      roleAssignments,
+      assignRoleActor,
       auditEvents: [...sessionEvents, ...seedAuditEvents],
       resetDemo,
     }),
@@ -349,6 +448,11 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       reviewStatuses,
       reassign,
       recordCorrection,
+      permissionMatrix,
+      setRolePermission,
+      resetRolePermissions,
+      roleAssignments,
+      assignRoleActor,
       sessionEvents,
       resetDemo,
     ],

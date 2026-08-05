@@ -13,6 +13,7 @@ import {
   PanelLeftOpen,
   RotateCcw,
   Search,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -52,6 +53,7 @@ const navItems = [
   { to: "/reviews", label: "Reviews", icon: ClipboardCheck },
   { to: "/gap-analysis", label: "Gap Analysis", icon: ListChecks },
   { to: "/audit", label: "Audit and Lineage", icon: History },
+  { to: "/roles", label: "Role Management", icon: ShieldCheck },
 ];
 
 const mobileNav = navItems.filter((n) =>
