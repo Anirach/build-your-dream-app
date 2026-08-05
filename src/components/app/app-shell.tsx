@@ -3,6 +3,7 @@ import {
   Bell,
   Bookmark,
   ClipboardCheck,
+  Gauge,
   HelpCircle,
   History,
   LayoutDashboard,
@@ -53,6 +54,7 @@ const navItems = [
   { to: "/reviews", label: "Reviews", icon: ClipboardCheck },
   { to: "/gap-analysis", label: "Gap Analysis", icon: ListChecks },
   { to: "/audit", label: "Audit and Lineage", icon: History },
+  { to: "/sla-analytics", label: "SLA Analytics", icon: Gauge },
   { to: "/roles", label: "Role Management", icon: ShieldCheck },
 ];
 
