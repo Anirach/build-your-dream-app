@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bot, Lock, RefreshCcw, RotateCcw, User, Workflow } from "lucide-react";
+import { Bot, Check, Lock, RefreshCcw, RotateCcw, User, Workflow } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -19,6 +19,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { correctionTrace } from "@/demo-data/audit";
+import {
+  correctionStages,
+  stageIndex,
+  statusTone,
+  type CorrectionRequest,
+} from "@/demo-data/corrections";
 import { useDemoState } from "@/demo-data/store";
 import type { AuditEventView } from "@/demo-data/types";
 import { cn } from "@/lib/utils";
@@ -55,12 +61,28 @@ const actorMeta: Record<
 };
 
 function Page() {
-  const { auditEvents, resetDemo, recordCorrection } = useDemoState();
+  const {
+    auditEvents,
+    resetDemo,
+    correctionRequests,
+    requestCorrection,
+    signOffCorrection,
+    rejectCorrection,
+    applyCorrection,
+    correctionBlocker,
+  } = useDemoState();
   const [actor, setActor] = useState<ActorFilter>("All");
   const [query, setQuery] = useState("");
   const [trace, setTrace] = useState<string | null>(null);
   const [correctionRef, setCorrectionRef] = useState("EFF-2291");
+  const [correctionChange, setCorrectionChange] = useState(
+    "Reassign the entry to the correct module",
+  );
   const [correctionReason, setCorrectionReason] = useState("");
+  const [notes, setNotes] = useState<Record<string, string>>({});
+
+  const pendingSignOff = correctionRequests.filter((r) => r.status === "Awaiting sign-off").length;
+  const awaitingApply = correctionRequests.filter((r) => r.status === "Signed off").length;
 
   const q = query.trim().toLowerCase();
   const events = useMemo(
@@ -140,7 +162,9 @@ function Page() {
       />
 
       <div className="mb-4">
-        <RoleAccessNotice permissions={["audit.correct"]} />
+        <RoleAccessNotice
+          permissions={["correction.request", "correction.signoff", "audit.correct"]}
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -160,9 +184,9 @@ function Page() {
           active={actor === "Agent"}
         />
         <MetricCard
-          label="Auto-rejected citations"
-          value={counts.autoRejected}
-          hint="Blocked by the demo citation whitelist"
+          label="Corrections in flight"
+          value={pendingSignOff + awaitingApply}
+          hint={`${pendingSignOff} awaiting sign-off, ${awaitingApply} signed off and ready to apply`}
         />
       </div>
 
@@ -204,9 +228,18 @@ function Page() {
         </SectionCard>
 
         <SectionCard
-          title="Record a correction by reversal"
-          description="Restricted action. A correction never edits history: it appends a reversing entry and a corrected entry under one trace ID."
+          title="Raise a correction request"
+          description="Corrections are never applied by one actor. Step 1 raises the request; a different reviewer must sign it off before the reversal is appended."
         >
+          <ol className="mb-5 grid gap-3 sm:grid-cols-3">
+            {correctionStages.map((s, i) => (
+              <li key={s.key} className="rounded-lg border border-border px-4 py-3">
+                <p className="tnum text-xs font-semibold text-primary">Step {i + 1}</p>
+                <p className="text-sm font-semibold text-navy">{s.label}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{s.help}</p>
+              </li>
+            ))}
+          </ol>
           <div className="grid gap-3 sm:max-w-xl">
             <div className="space-y-1.5">
               <label
@@ -220,6 +253,20 @@ function Page() {
                 value={correctionRef}
                 onChange={(e) => setCorrectionRef(e.target.value)}
                 placeholder="e.g. EFF-2291"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label
+                className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+                htmlFor="correction-change"
+              >
+                Proposed change
+              </label>
+              <Input
+                id="correction-change"
+                value={correctionChange}
+                onChange={(e) => setCorrectionChange(e.target.value)}
+                placeholder="What the corrected value should be"
               />
             </div>
             <div className="space-y-1.5">
@@ -239,27 +286,183 @@ function Page() {
             </div>
             <div>
               <PermissionButton
-                permission="audit.correct"
+                permission="correction.request"
                 size="sm"
-                disabled={correctionRef.trim() === "" || correctionReason.trim() === ""}
+                disabled={
+                  correctionRef.trim() === "" ||
+                  correctionReason.trim() === "" ||
+                  correctionChange.trim() === ""
+                }
                 onClick={() => {
-                  const ok = recordCorrection({
+                  const created = requestCorrection({
                     objectRef: correctionRef.trim(),
+                    objectType: "Audit event",
+                    proposedChange: correctionChange.trim(),
                     reason: correctionReason.trim(),
                     traceId: correctionTrace,
                   });
-                  if (ok) {
+                  if (created) {
                     setCorrectionReason("");
-                    toast.success("Correction appended", {
-                      description: `Reversal and corrected entry recorded for ${correctionRef.trim()}.`,
+                    toast.success(`${created.id} submitted for sign-off`, {
+                      description:
+                        "Nothing has changed yet. A reviewer other than you must countersign before the reversal is appended.",
                     });
                   }
                 }}
               >
-                Append correction
+                Submit for sign-off
               </PermissionButton>
             </div>
           </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Correction approvals"
+          description="Sign-off queue. A request must be countersigned by a different actor, then applied as a reversal."
+          actions={
+            <StatusBadge
+              label={`${pendingSignOff} awaiting sign-off`}
+              tone={pendingSignOff > 0 ? "warning" : "neutral"}
+            />
+          }
+        >
+          {correctionRequests.length === 0 ? (
+            <EmptyState
+              title="No correction requests"
+              description="Raise a request above to start the multi-step approval flow."
+            />
+          ) : (
+            <ul className="space-y-4">
+              {correctionRequests.map((r) => (
+                <li key={r.id} className="rounded-lg border border-border px-4 py-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="tnum font-mono text-xs text-muted-foreground">{r.id}</span>
+                        <StatusBadge label={r.status} tone={statusTone[r.status]} />
+                      </div>
+                      <p className="mt-1.5 text-sm font-semibold text-navy">{r.proposedChange}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {r.objectType} {r.objectRef} · raised by {r.requestedBy} · {r.requestedAt}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTrace(r.traceId)}
+                      className="tnum shrink-0 font-mono text-xs text-primary underline-offset-4 hover:underline"
+                      title="Filter the trail to this trace ID"
+                    >
+                      {r.traceId}
+                    </button>
+                  </div>
+
+                  <Stepper request={r} />
+
+                  <div className="mt-3 rounded-lg border border-border bg-card px-4 py-3">
+                    <KeyValue
+                      items={[
+                        { label: "Reason", value: r.reason },
+                        {
+                          label: "Sign-off",
+                          value: r.signedOffBy ?? "Not yet countersigned",
+                        },
+                        { label: "Applied by", value: r.appliedBy ?? "Not applied" },
+                      ]}
+                    />
+                    <ol className="mt-3 space-y-1.5 border-t border-border pt-3">
+                      {r.history.map((h, i) => (
+                        <li key={`${r.id}-${i}`} className="text-xs text-muted-foreground">
+                          <span className="font-semibold text-navy">{h.stage}</span> · {h.actor} (
+                          {h.role}) · {h.at} · {h.note}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+
+                  {(r.status === "Awaiting sign-off" || r.status === "Signed off") && (
+                    <div className="mt-3 space-y-2">
+                      {r.status === "Awaiting sign-off" && (
+                        <Textarea
+                          rows={2}
+                          value={notes[r.id] ?? ""}
+                          onChange={(e) => setNotes((p) => ({ ...p, [r.id]: e.target.value }))}
+                          placeholder="Sign-off or rejection note (required)"
+                          aria-label={`Decision note for ${r.id}`}
+                        />
+                      )}
+                      {(() => {
+                        const step = r.status === "Awaiting sign-off" ? "signoff" : "apply";
+                        const blocker = correctionBlocker(r, step);
+                        const note = (notes[r.id] ?? "").trim();
+                        if (step === "signoff") {
+                          return (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <PermissionButton
+                                permission="correction.signoff"
+                                size="sm"
+                                disabled={note === "" || blocker !== null}
+                                title={blocker ?? undefined}
+                                onClick={() => {
+                                  if (signOffCorrection(r.id, note)) {
+                                    setNotes((p) => ({ ...p, [r.id]: "" }));
+                                    toast.success(`${r.id} signed off`, {
+                                      description: "Ready to apply as a reversal.",
+                                    });
+                                  }
+                                }}
+                              >
+                                <Check className="size-3.5" aria-hidden /> Sign off
+                              </PermissionButton>
+                              <PermissionButton
+                                permission="correction.signoff"
+                                size="sm"
+                                variant="outline"
+                                disabled={note === "" || blocker !== null}
+                                title={blocker ?? undefined}
+                                onClick={() => {
+                                  if (rejectCorrection(r.id, note)) {
+                                    setNotes((p) => ({ ...p, [r.id]: "" }));
+                                    toast.success(`${r.id} rejected`, {
+                                      description: "No change was applied to the trail.",
+                                    });
+                                  }
+                                }}
+                              >
+                                Reject request
+                              </PermissionButton>
+                              {blocker && (
+                                <span className="text-xs text-warning">{blocker}</span>
+                              )}
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <PermissionButton
+                              permission="audit.correct"
+                              size="sm"
+                              disabled={blocker !== null}
+                              title={blocker ?? undefined}
+                              onClick={() => {
+                                if (applyCorrection(r.id)) {
+                                  toast.success(`${r.id} applied by reversal`, {
+                                    description: `Reversing entry appended under ${r.traceId}.`,
+                                  });
+                                }
+                              }}
+                            >
+                              Apply correction by reversal
+                            </PermissionButton>
+                            {blocker && <span className="text-xs text-warning">{blocker}</span>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </SectionCard>
 
         <SectionCard
