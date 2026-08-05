@@ -73,13 +73,14 @@ function StandardsLibrary() {
           <DemoDownloadButton
             filename="standards-library-demo.csv"
             label="Export results"
-            rows={results.map((s) => ({
-              id: s.id,
-              chapter: s.chapter,
-              title: s.title,
-              classification: s.classification,
-              crosswalk: s.crosswalk ? "Yes" : "No",
-            }))}
+            content={[
+              "id,chapter,title,classification,crosswalk",
+              ...results.map((s) =>
+                [s.id, s.chapter, s.title, s.classification, s.crosswalk ? "Yes" : "No"]
+                  .map((v) => `"${v}"`)
+                  .join(","),
+              ),
+            ].join("\n")}
           />
         }
       />
