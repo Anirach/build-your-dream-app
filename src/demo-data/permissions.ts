@@ -15,6 +15,8 @@ export type Permission =
   | "scenario.run"
   | "scenario.select"
   | "audit.correct"
+  | "correction.request"
+  | "correction.signoff"
   | "roles.manage";
 
 export const permissionLabels: Record<Permission, string> = {
@@ -28,6 +30,8 @@ export const permissionLabels: Record<Permission, string> = {
   "scenario.run": "Run and save gap scenarios",
   "scenario.select": "Select the preferred gap scenario",
   "audit.correct": "Record a correction by reversal on the audit trail",
+  "correction.request": "Raise a correction request for reviewer sign-off",
+  "correction.signoff": "Sign off or reject another actor's correction request",
   "roles.manage": "Assign actors to roles and change role permissions",
 };
 
@@ -37,8 +41,15 @@ export const permissionLabels: Record<Permission, string> = {
  */
 export const rolePermissions: Record<RoleId, Permission[]> = {
   exec: [],
-  pmo: ["review.reassign", "scenario.run", "scenario.select", "audit.correct", "roles.manage"],
-  lead: ["gap.return", "scenario.run"],
+  pmo: [
+    "review.reassign",
+    "scenario.run",
+    "scenario.select",
+    "audit.correct",
+    "correction.request",
+    "roles.manage",
+  ],
+  lead: ["gap.return", "scenario.run", "correction.request"],
   reviewer: [
     "mapping.approve",
     "mapping.edit",
@@ -47,8 +58,10 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "gap.approve",
     "gap.return",
     "scenario.run",
+    "correction.request",
+    "correction.signoff",
   ],
-  auditor: ["audit.correct", "roles.manage"],
+  auditor: ["audit.correct", "correction.signoff", "roles.manage"],
 };
 
 export const allPermissions = Object.keys(permissionLabels) as Permission[];
