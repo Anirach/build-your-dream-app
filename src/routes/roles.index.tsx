@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/page-header";
 import { PermissionButton, RoleAccessNotice } from "@/components/app/permission";
+import { SignOffRulesCard } from "@/components/app/signoff-rules";
 import {
   DemoDownloadButton,
   MetricCard,
