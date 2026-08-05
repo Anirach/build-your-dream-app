@@ -1,6 +1,8 @@
 // Concept-only presentation model. Multi-step correction workflow: a correction
 // is never applied by a single actor. It is requested, countersigned by a
 // reviewer who did not raise it, then applied as a reversal on the audit trail.
+import { baselineSignOffRules, type SignOffRule } from "./signoff-rules";
+
 export type CorrectionStatus =
   | "Awaiting sign-off"
   | "Signed off"
@@ -15,16 +17,28 @@ export interface CorrectionStep {
   note: string;
 }
 
+export interface CorrectionSignOff {
+  actor: string;
+  role: string;
+  at: string;
+  note: string;
+}
+
 export interface CorrectionRequest {
   id: string;
   objectRef: string;
   objectType: string;
+  /** Mandate type that decides which sign-off rule applies. */
+  mandateType: string;
+  /** Rule snapshot taken when the request was raised. */
+  rule: SignOffRule;
   traceId: string;
   proposedChange: string;
   reason: string;
   status: CorrectionStatus;
   requestedBy: string;
   requestedAt: string;
+  signOffs: CorrectionSignOff[];
   signedOffBy?: string;
   appliedBy?: string;
   history: CorrectionStep[];
@@ -40,7 +54,7 @@ export const correctionStages = [
   {
     key: "Sign-off" as const,
     label: "Reviewer sign-off",
-    help: "A reviewer or auditor who did not raise the request countersigns it. Segregation of duties is enforced.",
+    help: "The mandate's configured rule decides how many countersignatures are needed and which roles may give them.",
   },
   {
     key: "Applied" as const,
@@ -72,12 +86,15 @@ export const seedCorrectionRequests: CorrectionRequest[] = [
     id: "COR-0041",
     objectRef: "EFF-2291",
     objectType: "Effort entry",
+    mandateType: "Effort entry",
+    rule: baselineSignOffRules()["Effort entry"],
     traceId: "trc-7ed220",
     proposedChange: "Reassign 6.0 man-days from M07 to M03 (ICU readiness)",
     reason: "Effort booked against the wrong module during the week 31 sync.",
     status: "Awaiting sign-off",
     requestedBy: "Nabila Chowdhury",
     requestedAt: "3 Aug 2026, 16:40",
+    signOffs: [],
     history: [
       {
         stage: "Requested",
@@ -89,15 +106,76 @@ export const seedCorrectionRequests: CorrectionRequest[] = [
     ],
   },
   {
+    id: "COR-0040",
+    objectRef: "AUD-1904",
+    objectType: "Audit event",
+    mandateType: "Audit event",
+    rule: baselineSignOffRules()["Audit event"],
+    traceId: "trc-91b3f0",
+    proposedChange: "Restate the recorded owner attestation date",
+    reason: "Attestation was logged a day early by the weekly sync.",
+    status: "Signed off",
+    requestedBy: "Dr. Arif Hasan",
+    requestedAt: "31 Jul 2026, 09:15",
+    signOffs: [
+      {
+        actor: "Dr. Maya Rahman",
+        role: "Clinical / Quality Reviewer",
+        at: "31 Jul 2026, 10:02",
+        note: "Sign-off 1 of 2: attestation email confirms the later date.",
+      },
+      {
+        actor: "Farhana Islam",
+        role: "Independent Auditor",
+        at: "31 Jul 2026, 12:40",
+        note: "Sign-off 2 of 2: rule for audit events satisfied.",
+      },
+    ],
+    signedOffBy: "Farhana Islam",
+    history: [
+      {
+        stage: "Requested",
+        actor: "Dr. Arif Hasan",
+        role: "Module Lead",
+        at: "31 Jul 2026, 09:15",
+        note: "Attestation date mismatch found during module review.",
+      },
+      {
+        stage: "Sign-off",
+        actor: "Dr. Maya Rahman",
+        role: "Clinical / Quality Reviewer",
+        at: "31 Jul 2026, 10:02",
+        note: "Sign-off 1 of 2 recorded.",
+      },
+      {
+        stage: "Sign-off",
+        actor: "Farhana Islam",
+        role: "Independent Auditor",
+        at: "31 Jul 2026, 12:40",
+        note: "Sign-off 2 of 2 recorded; ready to apply.",
+      },
+    ],
+  },
+  {
     id: "COR-0039",
     objectRef: "MAP-0114",
     objectType: "Mapping row",
+    mandateType: "Mapping row",
+    rule: baselineSignOffRules()["Mapping row"],
     traceId: "trc-4a91c8",
     proposedChange: "Restate the clause mapping to the correct measurable element",
     reason: "Agent draft cited a superseded measurable element.",
     status: "Applied",
     requestedBy: "Dr. Arif Hasan",
     requestedAt: "29 Jul 2026, 10:05",
+    signOffs: [
+      {
+        actor: "Dr. Maya Rahman",
+        role: "Clinical / Quality Reviewer",
+        at: "29 Jul 2026, 11:22",
+        note: "Sign-off: proposed restatement matches the current standard text.",
+      },
+    ],
     signedOffBy: "Dr. Maya Rahman",
     appliedBy: "Nabila Chowdhury",
     history: [

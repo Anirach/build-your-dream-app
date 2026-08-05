@@ -26,6 +26,20 @@ import {
   type CorrectionRequest,
 } from "@/demo-data/corrections";
 import { useDemoState } from "@/demo-data/store";
+import {
+  mandateTypes,
+  ruleFor,
+  ruleSummary,
+  type MandateType,
+} from "@/demo-data/signoff-rules";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Link } from "@tanstack/react-router";
 import type { AuditEventView } from "@/demo-data/types";
 import { cn } from "@/lib/utils";
 
@@ -64,11 +78,14 @@ const actorMeta: Record<
 function Stepper({ request }: { request: CorrectionRequest }) {
   const reached = stageIndex(request.status);
   const rejected = request.status === "Rejected";
+  const required = request.rule.requiredApprovals;
   return (
     <ol className="mt-3 flex flex-wrap items-center gap-2">
       {correctionStages.map((s, i) => {
         const done = !rejected && (i < reached || request.status === "Applied");
         const current = !rejected && i === reached && request.status !== "Applied";
+        const label =
+          s.key === "Sign-off" ? `${s.label} (${request.signOffs.length}/${required})` : s.label;
         return (
           <li key={s.key} className="flex items-center gap-2">
             <span
@@ -79,7 +96,7 @@ function Stepper({ request }: { request: CorrectionRequest }) {
                 !done && !current && "border-border bg-secondary text-muted-foreground",
               )}
             >
-              {done ? <Check className="size-3.5 shrink-0" aria-hidden /> : `${i + 1}.`} {s.label}
+              {done ? <Check className="size-3.5 shrink-0" aria-hidden /> : `${i + 1}.`} {label}
             </span>
             {i < correctionStages.length - 1 && (
               <span className="text-xs text-muted-foreground" aria-hidden>
@@ -104,6 +121,7 @@ function Page() {
     rejectCorrection,
     applyCorrection,
     correctionBlocker,
+    signOffRules,
   } = useDemoState();
   const [actor, setActor] = useState<ActorFilter>("All");
   const [query, setQuery] = useState("");
@@ -113,7 +131,10 @@ function Page() {
     "Reassign the entry to the correct module",
   );
   const [correctionReason, setCorrectionReason] = useState("");
+  const [mandateType, setMandateType] = useState<MandateType>("Audit event");
   const [notes, setNotes] = useState<Record<string, string>>({});
+
+  const activeRule = ruleFor(signOffRules, mandateType);
 
   const pendingSignOff = correctionRequests.filter((r) => r.status === "Awaiting sign-off").length;
   const awaitingApply = correctionRequests.filter((r) => r.status === "Signed off").length;
@@ -278,6 +299,35 @@ function Page() {
             <div className="space-y-1.5">
               <label
                 className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+                htmlFor="correction-mandate"
+              >
+                Mandate type
+              </label>
+              <Select
+                value={mandateType}
+                onValueChange={(v) => setMandateType(v as MandateType)}
+              >
+                <SelectTrigger id="correction-mandate" aria-label="Mandate type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {mandateTypes.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Sign-off rule: {ruleSummary(activeRule)}.{" "}
+                <Link to="/roles" className="text-primary underline-offset-4 hover:underline">
+                  Configure rules
+                </Link>
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <label
+                className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
                 htmlFor="correction-ref"
               >
                 Object reference to correct
@@ -330,7 +380,8 @@ function Page() {
                 onClick={() => {
                   const created = requestCorrection({
                     objectRef: correctionRef.trim(),
-                    objectType: "Audit event",
+                    objectType: mandateType,
+                    mandateType,
                     proposedChange: correctionChange.trim(),
                     reason: correctionReason.trim(),
                     traceId: correctionTrace,
@@ -338,8 +389,7 @@ function Page() {
                   if (created) {
                     setCorrectionReason("");
                     toast.success(`${created.id} submitted for sign-off`, {
-                      description:
-                        "Nothing has changed yet. A reviewer other than you must countersign before the reversal is appended.",
+                      description: `Nothing has changed yet. Rule for ${mandateType}: ${ruleSummary(created.rule)}.`,
                     });
                   }
                 }}
@@ -352,7 +402,7 @@ function Page() {
 
         <SectionCard
           title="Correction approvals"
-          description="Sign-off queue. A request must be countersigned by a different actor, then applied as a reversal."
+          description="Sign-off queue. Each request follows the rule configured for its mandate type: the required number of countersignatures, the roles allowed to give them, then application as a reversal."
           actions={
             <StatusBadge
               label={`${pendingSignOff} awaiting sign-off`}
@@ -374,6 +424,13 @@ function Page() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="tnum font-mono text-xs text-muted-foreground">{r.id}</span>
                         <StatusBadge label={r.status} tone={statusTone[r.status]} />
+                        <StatusBadge label={r.mandateType} tone="neutral" />
+                        <StatusBadge
+                          label={`${r.signOffs.length} of ${r.rule.requiredApprovals} sign-offs`}
+                          tone={
+                            r.signOffs.length >= r.rule.requiredApprovals ? "success" : "warning"
+                          }
+                        />
                       </div>
                       <p className="mt-1.5 text-sm font-semibold text-navy">{r.proposedChange}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
@@ -396,9 +453,13 @@ function Page() {
                     <KeyValue
                       items={[
                         { label: "Reason", value: r.reason },
+                        { label: "Sign-off rule", value: ruleSummary(r.rule) },
                         {
-                          label: "Sign-off",
-                          value: r.signedOffBy ?? "Not yet countersigned",
+                          label: "Countersigned by",
+                          value:
+                            r.signOffs.length === 0
+                              ? "Not yet countersigned"
+                              : r.signOffs.map((s) => `${s.actor} (${s.role})`).join("; "),
                         },
                         { label: "Applied by", value: r.appliedBy ?? "Not applied" },
                       ]}
@@ -439,9 +500,16 @@ function Page() {
                                 onClick={() => {
                                   if (signOffCorrection(r.id, note)) {
                                     setNotes((p) => ({ ...p, [r.id]: "" }));
-                                    toast.success(`${r.id} signed off`, {
-                                      description: "Ready to apply as a reversal.",
-                                    });
+                                    const done = r.signOffs.length + 1;
+                                    toast.success(
+                                      `${r.id}: sign-off ${done} of ${r.rule.requiredApprovals} recorded`,
+                                      {
+                                        description:
+                                          done >= r.rule.requiredApprovals
+                                            ? "Rule satisfied. Ready to apply as a reversal."
+                                            : `${r.rule.requiredApprovals - done} more countersignature(s) required by the ${r.mandateType} rule.`,
+                                      },
+                                    );
                                   }
                                 }}
                               >
