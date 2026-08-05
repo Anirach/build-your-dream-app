@@ -17,7 +17,12 @@ export type Permission =
   | "audit.correct"
   | "correction.request"
   | "correction.signoff"
-  | "roles.manage";
+  | "roles.manage"
+  | "intake.view"
+  | "intake.record.add"
+  | "intake.import"
+  | "registry.propose"
+  | "registry.approve";
 
 export const permissionLabels: Record<Permission, string> = {
   "mapping.approve": "Approve clause mappings",
@@ -33,6 +38,11 @@ export const permissionLabels: Record<Permission, string> = {
   "correction.request": "Raise a correction request for reviewer sign-off",
   "correction.signoff": "Sign off or reject another actor's correction request",
   "roles.manage": "Assign actors to roles and change role permissions",
+  "intake.view": "View governed data intake sources, receipts and corrections",
+  "intake.record.add": "Add or correct programme records through data intake",
+  "intake.import": "Run and confirm a guided import",
+  "registry.propose": "Propose a module-registry change",
+  "registry.approve": "Approve or reject a module-registry change proposal",
 };
 
 /**
@@ -40,7 +50,7 @@ export const permissionLabels: Record<Permission, string> = {
  * mandate requires.
  */
 export const rolePermissions: Record<RoleId, Permission[]> = {
-  exec: [],
+  exec: ["intake.view"],
   pmo: [
     "review.reassign",
     "scenario.run",
@@ -48,8 +58,13 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "audit.correct",
     "correction.request",
     "roles.manage",
+    "intake.view",
+    "intake.record.add",
+    "intake.import",
+    "registry.propose",
+    "registry.approve",
   ],
-  lead: ["gap.return", "scenario.run", "correction.request"],
+  lead: ["gap.return", "scenario.run", "correction.request", "intake.view", "intake.record.add"],
   reviewer: [
     "mapping.approve",
     "mapping.edit",
@@ -60,8 +75,9 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "scenario.run",
     "correction.request",
     "correction.signoff",
+    "intake.view",
   ],
-  auditor: ["audit.correct", "correction.signoff", "roles.manage"],
+  auditor: ["audit.correct", "correction.signoff", "roles.manage", "intake.view"],
 };
 
 export const allPermissions = Object.keys(permissionLabels) as Permission[];
