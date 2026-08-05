@@ -690,8 +690,340 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [actor, authorise, pushEvent, roleAssignments],
   );
 
+  /* --------- Governed data intake: records, ledger, imports, registry -------- */
+
+  const addIntakeRecord = useCallback<DemoState["addIntakeRecord"]>(
+    ({ kind, values, asDraft }) => {
+      if (!authorise("intake.record.add", recordKindLabels[kind], values["title"] ?? kind))
+        return null;
+      const n = intakeSeq + 1;
+      setIntakeSeq(n);
+      const at = now();
+      const prefix = kind.slice(0, 3).toUpperCase();
+      const id = `${prefix}-${asDraft ? "D" : "A"}-${String(n).padStart(4, "0")}`;
+      const def = formFor(kind);
+      const fields = Object.fromEntries(
+        def.fields
+          .filter(
+            (f) =>
+              !["title", "moduleCode", "owner", "effectiveDate", "source", "reason", "classification"].includes(
+                f.key,
+              ),
+          )
+          .map((f) => [f.key, values[f.key] ?? ""] as const),
+      );
+      if (kind === "risk") {
+        const score =
+          Number((values["likelihood"] ?? "0").charAt(0)) *
+          Number((values["impactRating"] ?? "0").charAt(0));
+        fields["riskScore"] = String(score);
+      }
+      const record: ProgrammeRecordDraft = {
+        id,
+        kind,
+        title: values["title"] ?? values["deliverableId"] ?? values["workPackageId"] ?? recordKindLabels[kind],
+        moduleCode: values["moduleCode"] ?? "M03",
+        owner: values["owner"] ?? values["consultant"] ?? actor,
+        effectiveDate: values["effectiveDate"] ?? "",
+        source: values["source"] ?? "",
+        reason: values["reason"] ?? "",
+        classification: values["classification"] ?? "Internal",
+        status: asDraft ? "Draft" : "Accepted",
+        fields,
+        createdBy: actor,
+        createdAt: at,
+        history: [
+          {
+            at,
+            actor,
+            change: asDraft ? "Draft saved" : "Submitted and accepted after validation",
+            reason: values["reason"] ?? "Recorded in local mock state",
+          },
+        ],
+      };
+      setIntakeRecords((prev) => [record, ...prev]);
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `${asDraft ? "Saved draft" : "Accepted"} ${recordKindLabels[kind].toLowerCase()}`,
+        objectType: recordKindLabels[kind],
+        objectRef: `${record.id} (${record.moduleCode})`,
+        beforeAfter: asDraft
+          ? `no record -> draft ${record.id}`
+          : `no record -> accepted ${record.id}`,
+        reason: record.reason || "Governed data intake",
+        traceId: "trc-intake",
+      });
+      return record;
+    },
+    [actor, authorise, intakeSeq, pushEvent],
+  );
+
+  const correctIntakeRecord = useCallback<DemoState["correctIntakeRecord"]>(
+    (id, field, value, reason) => {
+      const record = intakeRecords.find((r) => r.id === id);
+      if (!record) return false;
+      if (!authorise("intake.record.add", recordKindLabels[record.kind], id)) return false;
+      const before =
+        field === "title" ? record.title : field === "owner" ? record.owner : record.fields[field] ?? "";
+      const at = now();
+      setIntakeRecords((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                ...(field === "title" ? { title: value } : {}),
+                ...(field === "owner" ? { owner: value } : {}),
+                fields:
+                  field === "title" || field === "owner" ? r.fields : { ...r.fields, [field]: value },
+                history: [
+                  ...r.history,
+                  { at, actor, change: `${field}: "${before}" -> "${value}"`, reason },
+                ],
+              }
+            : r,
+        ),
+      );
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Corrected ${recordKindLabels[record.kind].toLowerCase()} field ${field}`,
+        objectType: recordKindLabels[record.kind],
+        objectRef: id,
+        beforeAfter: `${before || "empty"} -> ${value}`,
+        reason,
+        traceId: "trc-intake",
+      });
+      return true;
+    },
+    [actor, authorise, intakeRecords, pushEvent],
+  );
+
+  const addLedgerEntry = useCallback<DemoState["addLedgerEntry"]>(
+    (values) => {
+      if (!authorise("intake.record.add", "Man-day entry", values["workPackage"] ?? "ledger"))
+        return null;
+      const n = ledgerSeq + 1;
+      setLedgerSeq(n);
+      const entry: LedgerEntryView = {
+        id: `MD-2026-${String(n).padStart(4, "0")}`,
+        date: values["effectiveDate"] ?? now(),
+        consultant: values["consultant"] ?? actor,
+        moduleCode: values["moduleCode"] ?? "M03",
+        workPackage: values["workPackage"] ?? "",
+        days: Number(values["days"] ?? 0),
+        activity: values["title"] ?? "",
+        source: values["source"] ?? "",
+        kind: "Original",
+        recordedBy: actor,
+      };
+      setLedger((prev) => [entry, ...prev]);
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: "Appended man-day entry",
+        objectType: "Man-day entry",
+        objectRef: `${entry.id} (${entry.moduleCode} ${entry.workPackage})`,
+        beforeAfter: `no entry -> ${entry.days} day(s) appended`,
+        reason: values["reason"] ?? "Effort recorded in the append-only ledger",
+        traceId: "trc-intake",
+      });
+      return entry;
+    },
+    [actor, authorise, ledgerSeq, pushEvent],
+  );
+
+  const correctLedgerEntry = useCallback<DemoState["correctLedgerEntry"]>(
+    (id, input) => {
+      const original = ledger.find((e) => e.id === id && e.kind === "Original");
+      if (!original) return false;
+      if (!authorise("intake.record.add", "Man-day entry", id)) return false;
+      if (ledger.some((e) => e.kind === "Reversal" && e.linkedTo === id)) return false;
+      const n = ledgerSeq + 1;
+      setLedgerSeq(n + 1);
+      const at = now();
+      const reversal: LedgerEntryView = {
+        ...original,
+        id: `${original.id}-R`,
+        date: at,
+        days: -original.days,
+        activity: `Reversal of ${original.id}`,
+        kind: "Reversal",
+        linkedTo: original.id,
+        recordedBy: actor,
+        reason: input.reason,
+      };
+      const replacement: LedgerEntryView = {
+        ...original,
+        id: `MD-2026-${String(n + 1).padStart(4, "0")}`,
+        date: at,
+        days: input.days,
+        workPackage: input.workPackage,
+        activity: input.activity,
+        kind: "Replacement",
+        linkedTo: original.id,
+        recordedBy: actor,
+        reason: input.reason,
+      };
+      setLedger((prev) => [replacement, reversal, ...prev]);
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: "Corrected man-day entry by reversal and replacement",
+        objectType: "Man-day entry",
+        objectRef: `${original.id} -> ${reversal.id} + ${replacement.id}`,
+        beforeAfter: `${original.days} day(s) on ${original.workPackage} retained -> reversal appended, ${input.days} day(s) recorded on ${input.workPackage}`,
+        reason: input.reason,
+        traceId: "trc-intake",
+      });
+      return true;
+    },
+    [actor, authorise, ledger, ledgerSeq, pushEvent],
+  );
+
+  const commitImport = useCallback<DemoState["commitImport"]>(
+    ({ importType, sourceName, reason, mapping, rows, acknowledgedWarnings }) => {
+      if (!authorise("intake.import", "Import run", importType)) return null;
+      const n = receiptSeq + 1;
+      setReceiptSeq(n);
+      const counts = countOutcomes(rows);
+      const dataset = datasetFor(importType);
+      const receipt: IntakeReceiptView = {
+        id: `IMP-DEMO-${String(n).padStart(4, "0")}`,
+        source: sourceName,
+        dataType: dataset?.label ?? importType,
+        startedBy: actor,
+        startedAt: now(),
+        accepted: counts.accepted,
+        warnings: counts.warnings,
+        rejected: counts.rejected,
+        noChange: counts.noChange,
+        status:
+          counts.accepted === 0
+            ? "Rejected"
+            : counts.warnings > 0
+              ? "Completed with warnings"
+              : "Completed",
+        reason,
+        mapping,
+        issues: rows.flatMap((r) => (r.issue ? [r.issue] : [])),
+        acknowledgedWarnings,
+        objectRefs: rows.filter((r) => r.outcome === "Accepted").map((r) => r.reference),
+        traceId: `trc-imp-${String(n).padStart(4, "0")}`,
+      };
+      setReceipts((prev) => [receipt, ...prev]);
+      pushEvent({
+        actor,
+        actorType: "Sync",
+        action: `Confirmed guided import of ${receipt.dataType.toLowerCase()}`,
+        objectType: "Import receipt",
+        objectRef: receipt.id,
+        beforeAfter: `${counts.accepted} accepted, ${counts.warnings} warnings, ${counts.rejected} rejected (not applied), ${counts.noChange} unchanged`,
+        reason,
+        traceId: receipt.traceId,
+      });
+      return receipt;
+    },
+    [actor, authorise, pushEvent, receiptSeq],
+  );
+
+  const submitProposal = useCallback<DemoState["submitProposal"]>(
+    (input) => {
+      if (!authorise("registry.propose", "Registry change proposal", input.moduleCode)) return null;
+      const n = proposalSeq + 1;
+      setProposalSeq(n);
+      const proposal: RegistryChangeProposalView = {
+        ...input,
+        id: `PRP-${String(n).padStart(4, "0")}`,
+        requestedBy: actor,
+        requestedAt: now(),
+        status: "Pending owner approval",
+      };
+      setProposals((prev) => [proposal, ...prev]);
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Submitted registry change proposal (${proposal.changeType})`,
+        objectType: "Registry change proposal",
+        objectRef: `${proposal.id} (${proposal.moduleCode})`,
+        beforeAfter: "governed registry unchanged -> pending owner approval",
+        reason: proposal.rationale,
+        traceId: "trc-registry",
+      });
+      return proposal;
+    },
+    [actor, authorise, proposalSeq, pushEvent],
+  );
+
+  const decideProposal = useCallback<DemoState["decideProposal"]>(
+    (id, approve, reason) => {
+      const proposal = proposals.find((p) => p.id === id);
+      if (!proposal) return false;
+      if (!authorise("registry.approve", "Registry change proposal", id)) return false;
+      if (proposal.status !== "Pending owner approval") return false;
+      const at = now();
+      setProposals((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                status: approve ? "Approved" : "Rejected",
+                decidedBy: actor,
+                decidedAt: at,
+                decisionReason: reason,
+              }
+            : p,
+        ),
+      );
+      if (approve) {
+        setActiveModules((prev) => {
+          if (proposal.changeType === "Retire module")
+            return prev.filter((m) => m.code !== proposal.moduleCode);
+          if (proposal.changeType === "Amend module")
+            return prev.map((m) =>
+              m.code === proposal.moduleCode
+                ? { ...m, label: proposal.moduleName, estate: proposal.estate }
+                : m,
+            );
+          if (prev.some((m) => m.code === proposal.moduleCode)) return prev;
+          const added: ModuleSummary = {
+            id: proposal.moduleCode,
+            code: proposal.moduleCode,
+            label: proposal.moduleName,
+            estate: proposal.estate,
+            rag: "amber",
+            progress: 0,
+            stage: STAGES[0]!,
+            nextGate: "PG1 - 26 Aug 2026",
+            baselineVarianceDays: 0,
+            openRisks: 0,
+            criticalIssues: 0,
+            evidenceGaps: 0,
+            ownerId: "p-nabila",
+            overduePackages: 0,
+            causes: ["evidence-incomplete"],
+          };
+          return [...prev, added];
+        });
+      }
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `${approve ? "Approved" : "Rejected"} registry change proposal`,
+        objectType: "Registry change proposal",
+        objectRef: `${proposal.id} (${proposal.moduleCode})`,
+        beforeAfter: approve
+          ? `pending -> approved, synthetic registry change applied (${proposal.changeType.toLowerCase()})`
+          : "pending -> rejected, governed registry unchanged",
+        reason: `${reason} (requested by ${proposal.requestedBy}, decided by ${actor} at ${at})`,
+        traceId: "trc-registry",
+      });
+      return true;
+    },
+    [actor, authorise, proposals, pushEvent],
+  );
+
   const resetDemo = useCallback(() => {
-    void 0;
     setPermissionMatrix(baselineMatrix());
     setSignOffRules(baselineSignOffRules());
     setRoleAssignments(
