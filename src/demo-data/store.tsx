@@ -14,6 +14,14 @@ import {
   seedCorrectionRequests,
   type CorrectionRequest,
 } from "./corrections";
+import {
+  baselineSignOffRules,
+  ruleFor,
+  ruleSummary,
+  type MandateType,
+  type SignOffRule,
+  type SignOffRuleSet,
+} from "./signoff-rules";
 import { mappingRows } from "./mapping";
 import { gapAnalyses } from "./gaps";
 import { reviewQueue } from "./reviews";
@@ -66,6 +74,7 @@ interface DemoState {
   requestCorrection: (input: {
     objectRef: string;
     objectType: string;
+    mandateType: MandateType;
     proposedChange: string;
     reason: string;
     traceId: string;
@@ -75,6 +84,10 @@ interface DemoState {
   applyCorrection: (id: string) => boolean;
   /** Why the active actor cannot act on this request, beyond permissions. */
   correctionBlocker: (request: CorrectionRequest, step: "signoff" | "apply") => string | null;
+  /** Configurable reviewer sign-off rules per mandate type. */
+  signOffRules: SignOffRuleSet;
+  setSignOffRule: (mandateType: MandateType, patch: Partial<SignOffRule>) => boolean;
+  resetSignOffRules: () => boolean;
   /** Session-editable permission matrix and actor assignments. */
   permissionMatrix: PermissionMatrix;
   setRolePermission: (role: RoleId, permission: Permission, granted: boolean) => boolean;
