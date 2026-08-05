@@ -14,7 +14,8 @@ export type Permission =
   | "gap.return"
   | "scenario.run"
   | "scenario.select"
-  | "audit.correct";
+  | "audit.correct"
+  | "roles.manage";
 
 export const permissionLabels: Record<Permission, string> = {
   "mapping.approve": "Approve clause mappings",
@@ -27,6 +28,7 @@ export const permissionLabels: Record<Permission, string> = {
   "scenario.run": "Run and save gap scenarios",
   "scenario.select": "Select the preferred gap scenario",
   "audit.correct": "Record a correction by reversal on the audit trail",
+  "roles.manage": "Assign actors to roles and change role permissions",
 };
 
 /**
@@ -35,7 +37,7 @@ export const permissionLabels: Record<Permission, string> = {
  */
 export const rolePermissions: Record<RoleId, Permission[]> = {
   exec: [],
-  pmo: ["review.reassign", "scenario.run", "scenario.select", "audit.correct"],
+  pmo: ["review.reassign", "scenario.run", "scenario.select", "audit.correct", "roles.manage"],
   lead: ["gap.return", "scenario.run"],
   reviewer: [
     "mapping.approve",
@@ -46,11 +48,22 @@ export const rolePermissions: Record<RoleId, Permission[]> = {
     "gap.return",
     "scenario.run",
   ],
-  auditor: ["audit.correct"],
+  auditor: ["audit.correct", "roles.manage"],
 };
+
+export const allPermissions = Object.keys(permissionLabels) as Permission[];
 
 export function can(role: RoleId, permission: Permission) {
   return rolePermissions[role].includes(permission);
+}
+
+/** Matrix shape used by the session-editable role management screen. */
+export type PermissionMatrix = Record<RoleId, Permission[]>;
+
+export function baselineMatrix(): PermissionMatrix {
+  return Object.fromEntries(
+    (Object.keys(rolePermissions) as RoleId[]).map((r) => [r, [...rolePermissions[r]]]),
+  ) as PermissionMatrix;
 }
 
 export function roleName(role: RoleId) {
