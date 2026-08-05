@@ -2,7 +2,7 @@
 // Files are held in the browser session only for this mockup: nothing is
 // transmitted or stored, and attaching a file does not verify the artifact.
 import { useRef, useState } from "react";
-import { History as HistoryIcon, Paperclip, Trash2, Upload } from "lucide-react";
+import { History as HistoryIcon, Paperclip, RotateCcw, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { PermissionButton } from "@/components/app/permission";
@@ -41,7 +41,12 @@ export function EvidenceUploadPanel({
   /** Reference typed in the recording sheet; the file is linked to it. */
   reference: string;
 }) {
-  const { attachmentsFor, attachEvidenceFile, removeEvidenceAttachment } = useDemoState();
+  const {
+    attachmentsFor,
+    attachEvidenceFile,
+    removeEvidenceAttachment,
+    rollbackEvidenceRevision,
+  } = useDemoState();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [kind, setKind] = useState<AttachmentKind>("Authoritative document");
@@ -267,6 +272,7 @@ export function EvidenceUploadPanel({
                   attachment={head}
                   artifactId={artifact.id}
                   onDetach={removeEvidenceAttachment}
+                  onRollback={rollbackEvidenceRevision}
                 />
                 {history.length > 0 && (
                   <>
@@ -294,6 +300,7 @@ export function EvidenceUploadPanel({
                               attachment={a}
                               artifactId={artifact.id}
                               onDetach={removeEvidenceAttachment}
+                              onRollback={rollbackEvidenceRevision}
                             />
                           </li>
                         ))}
@@ -314,10 +321,12 @@ function RevisionRow({
   attachment: a,
   artifactId,
   onDetach,
+  onRollback,
 }: {
   attachment: EvidenceAttachment;
   artifactId: string;
   onDetach: (id: string, reason: string) => boolean;
+  onRollback: (id: string, reason: string) => boolean;
 }) {
   return (
     <div className="flex items-start justify-between gap-2">
@@ -345,6 +354,14 @@ function RevisionRow({
         {a.supersededById && (
           <p className="text-xs text-muted-foreground">Superseded by {a.supersededById}</p>
         )}
+        {a.reinstatedFromId && (
+          <p className="text-xs text-muted-foreground">
+            Reinstated by rollback from {a.reinstatedFromId} · {a.reinstatedBy} · {a.reinstatedAt}
+          </p>
+        )}
+        {a.reinstatementReason && (
+          <p className="text-xs text-muted-foreground">Rollback reason: {a.reinstatementReason}</p>
+        )}
         <p className="mt-1 text-xs">{a.note}</p>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
@@ -357,6 +374,32 @@ function RevisionRow({
           >
             Open
           </a>
+        )}
+        {a.status === "Superseded" && (
+          <PermissionButton
+            permission="readiness.update"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const reason = window.prompt(
+                `Why is revision r${a.revision} being made current again?`,
+                "",
+              );
+              if (reason === null) return;
+              if (!reason.trim()) {
+                toast.error("A rollback reason is required");
+                return;
+              }
+              if (onRollback(a.id, reason.trim())) {
+                toast.success(`${a.id} (r${a.revision}) is current again`, {
+                  description: "Every revision stays in the lineage and the rollback is audited.",
+                });
+              }
+            }}
+          >
+            <RotateCcw className="size-3.5" aria-hidden />
+            Make current
+          </PermissionButton>
         )}
         <PermissionButton
           permission="readiness.update"

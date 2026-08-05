@@ -233,6 +233,8 @@ interface DemoState {
     note: string;
   }) => EvidenceAttachment | null;
   removeEvidenceAttachment: (attachmentId: string, reason: string) => boolean;
+  /** Make an earlier revision current again; every revision is retained. */
+  rollbackEvidenceRevision: (attachmentId: string, reason: string) => boolean;
   requestPacketAttestation: (packetId: PacketId) => boolean;
   packetAttestations: Partial<Record<PacketId, PacketAttestation>>;
   attestPacket: (packetId: PacketId, reason: string) => boolean;
@@ -1451,6 +1453,52 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [actor, authorise, evidenceAttachments, pushEvent],
   );
 
+  const rollbackEvidenceRevision = useCallback<DemoState["rollbackEvidenceRevision"]>(
+    (attachmentId, reason) => {
+      const target = evidenceAttachments.find((a) => a.id === attachmentId);
+      if (!target) return false;
+      if (target.status === "Current") return false;
+      if (!authorise("readiness.update", "Evidence artifact", target.artifactId)) return false;
+      const supersededCurrent = evidenceAttachments.find(
+        (a) => a.lineageId === target.lineageId && a.status === "Current",
+      );
+      const stamp = now();
+      setEvidenceAttachments((prev) =>
+        prev.map((a) => {
+          if (a.id === target.id) {
+            const { supersededById: _cleared, ...rest } = a;
+            return {
+              ...rest,
+              status: "Current" as const,
+              ...(supersededCurrent ? { reinstatedFromId: supersededCurrent.id } : {}),
+              reinstatedBy: actor,
+              reinstatedAt: stamp,
+              reinstatementReason: reason || "No reason supplied",
+            };
+          }
+          if (a.lineageId === target.lineageId && a.status === "Current") {
+            return { ...a, status: "Superseded" as const, supersededById: target.id };
+          }
+          return a;
+        }),
+      );
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Rolled evidence lineage back to revision r${target.revision}`,
+        objectType: "Evidence artifact",
+        objectRef: `${target.artifactId} · ${target.id}`,
+        beforeAfter: supersededCurrent
+          ? `${supersededCurrent.id} r${supersededCurrent.revision} (${supersededCurrent.fileName}) current -> ${target.id} r${target.revision} (${target.fileName}) current · lineage ${target.lineageId}`
+          : `${target.id} r${target.revision} (${target.fileName}) marked current · lineage ${target.lineageId}`,
+        reason: reason || "No reason supplied",
+        traceId: "trc-readiness",
+      });
+      return true;
+    },
+    [actor, authorise, evidenceAttachments, pushEvent],
+  );
+
   const requestPacketAttestation = useCallback<DemoState["requestPacketAttestation"]>(
     (packetId) => {
       const packet = packetById(packetId);
@@ -1697,6 +1745,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       attachmentsFor,
       attachEvidenceFile,
       removeEvidenceAttachment,
+      rollbackEvidenceRevision,
       requestPacketAttestation,
       packetAttestations,
       attestPacket,
@@ -1719,6 +1768,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       attachmentsFor,
       attachEvidenceFile,
       removeEvidenceAttachment,
+      rollbackEvidenceRevision,
       requestPacketAttestation,
       packetAttestations,
       attestPacket,
