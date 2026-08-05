@@ -191,6 +191,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useActivePath();
   const { role, setRole, resetDemo, actor, signOut } = useDemoState();
   const activeRole = roles.find((r) => r.id === role) ?? roles[3]!;
+  const mobileNav = navItems
+    .filter((item) => roleNavAccess[role].includes(item.to))
+    .slice(0, 4);
+  const authorisedHere = roleCanView(role, pathname);
+  const homeFor = roles.find((r) => r.id === role)?.landing ?? "/";
   const initials = actor
     .replace(/^Dr\.\s*/, "")
     .split(" ")
