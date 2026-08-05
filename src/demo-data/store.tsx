@@ -1258,6 +1258,12 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     () => ({
       role,
       setRole,
+      signedIn,
+      signIn: (next: RoleId) => {
+        setRole(next);
+        setSignedIn(true);
+      },
+      signOut: () => setSignedIn(false),
       can: allows,
       denialReason,
       actor,
@@ -1313,6 +1319,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     }),
     [
       role,
+      signedIn,
       allows,
       denialReason,
       actor,
