@@ -73,7 +73,7 @@ function DataIntakePage() {
         primary={<QuickAddRecordMenu onPick={setFormKind} />}
         secondary={
           <Button asChild variant="outline" size="sm">
-            <Link to="/data-intake/import/$importType" params={{ importType: "schedule" }}>
+            <Link to="/data-intake/import/$importType" params={{ importType: "schedule" }} search={{ step: 0 }}>
               <FileInput className="size-4" aria-hidden /> Start guided import
             </Link>
           </Button>
@@ -133,7 +133,7 @@ function DataIntakePage() {
                   <p className="mt-0.5 text-xs text-muted-foreground">{d.sampleName}</p>
                 </div>
                 <Button asChild variant="outline" size="sm">
-                  <Link to="/data-intake/import/$importType" params={{ importType: d.importType }}>
+                  <Link to="/data-intake/import/$importType" params={{ importType: d.importType }} search={{ step: 0 }}>
                     Open wizard
                   </Link>
                 </Button>
