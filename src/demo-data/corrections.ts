@@ -99,7 +99,7 @@ export const seedCorrectionRequests: CorrectionRequest[] = [
     requestedBy: "Dr. Arif Hasan",
     requestedAt: "29 Jul 2026, 10:05",
     signedOffBy: "Dr. Maya Rahman",
-    appliedBy: "Dr. Maya Rahman",
+    appliedBy: "Nabila Chowdhury",
     history: [
       {
         stage: "Requested",
@@ -117,8 +117,8 @@ export const seedCorrectionRequests: CorrectionRequest[] = [
       },
       {
         stage: "Applied",
-        actor: "Dr. Maya Rahman",
-        role: "Clinical / Quality Reviewer",
+        actor: "Nabila Chowdhury",
+        role: "Programme Owner / PMO Lead",
         at: "29 Jul 2026, 11:24",
         note: "Reversal and corrected entry appended under one trace ID.",
       },
