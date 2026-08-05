@@ -402,7 +402,7 @@ function Page() {
 
         <SectionCard
           title="Correction approvals"
-          description="Sign-off queue. A request must be countersigned by a different actor, then applied as a reversal."
+          description="Sign-off queue. Each request follows the rule configured for its mandate type: the required number of countersignatures, the roles allowed to give them, then application as a reversal."
           actions={
             <StatusBadge
               label={`${pendingSignOff} awaiting sign-off`}
