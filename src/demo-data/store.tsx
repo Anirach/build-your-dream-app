@@ -1361,10 +1361,9 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
         uploadedBy: actor,
         uploadedAt: now(),
         checksum: placeholderChecksum(file.name, file.size, seqNo),
-        previewUrl:
-          typeof URL !== "undefined" && typeof URL.createObjectURL === "function"
-            ? URL.createObjectURL(file)
-            : undefined,
+        ...(typeof URL !== "undefined" && typeof URL.createObjectURL === "function"
+          ? { previewUrl: URL.createObjectURL(file) }
+          : {}),
       };
       setEvidenceAttachments((prev) => [attachment, ...prev]);
       pushEvent({
@@ -1643,6 +1642,10 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       auditEvents: [...sessionEvents, ...seedAuditEvents],
       evidenceRegister,
       updateEvidenceState,
+      evidenceAttachments,
+      attachmentsFor,
+      attachEvidenceFile,
+      removeEvidenceAttachment,
       requestPacketAttestation,
       packetAttestations,
       attestPacket,
@@ -1661,6 +1664,10 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       denialReason,
       evidenceRegister,
       updateEvidenceState,
+      evidenceAttachments,
+      attachmentsFor,
+      attachEvidenceFile,
+      removeEvidenceAttachment,
       requestPacketAttestation,
       packetAttestations,
       attestPacket,
