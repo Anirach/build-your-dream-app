@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/page-header";
+import { GapScenarioRunner } from "@/components/app/gap-scenario-runner";
 import {
   CitationChip,
   DemoDownloadButton,
@@ -188,6 +189,8 @@ function Page() {
       </div>
 
       <div className="mt-6 space-y-6">
+        <GapScenarioRunner analysis={analysis} />
+
         <SectionCard
           title="Gap matrix"
           description="Select a row to see why it was assigned, what evidence is missing, and to record a decision."

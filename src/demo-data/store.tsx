@@ -13,6 +13,7 @@ import { seedAuditEvents } from "./audit";
 import { mappingRows } from "./mapping";
 import { gapAnalyses } from "./gaps";
 import { reviewQueue } from "./reviews";
+import { leverSummary, type GapScenario } from "./scenarios";
 import type { AuditEventView, MappingRowView, ReviewQueueItem, RoleId } from "./types";
 
 export interface ClauseDecision {
@@ -33,6 +34,11 @@ interface DemoState {
   auditReference: string | null;
   gapRowStatus: Record<string, "Not reviewed" | "Approved" | "Returned">;
   setGapRowStatus: (id: string, status: "Approved" | "Returned", reason?: string) => void;
+  gapScenarios: GapScenario[];
+  saveScenario: (scenario: Omit<GapScenario, "id" | "createdAt" | "runId">) => GapScenario;
+  deleteScenario: (id: string) => void;
+  selectedScenarioId: string | null;
+  selectScenario: (id: string) => void;
   reviewStatuses: Record<string, ReviewQueueItem["status"]>;
   reassign: (id: string, reviewer: string) => void;
   auditEvents: AuditEventView[];
@@ -68,6 +74,9 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     () => Object.fromEntries(reviewQueue.map((r) => [r.id, r.status] as const)),
   );
   const [seq, setSeq] = useState(2100);
+  const [gapScenarios, setGapScenarios] = useState<GapScenario[]>([]);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
+  const [scenarioSeq, setScenarioSeq] = useState(0);
 
   const pushEvent = useCallback(
     (event: Omit<AuditEventView, "id" | "timestamp">) => {
@@ -153,10 +162,67 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [pushEvent],
   );
 
+  const saveScenario = useCallback<DemoState["saveScenario"]>(
+    (scenario) => {
+      const n = scenarioSeq + 1;
+      setScenarioSeq(n);
+      const saved: GapScenario = {
+        ...scenario,
+        id: `scn-${n}`,
+        runId: `GAP-SIM-${String(1000 + n)}`,
+        createdAt: now(),
+      };
+      setGapScenarios((prev) => [saved, ...prev]);
+      pushEvent({
+        actor: REVIEWER,
+        actorType: "Agent",
+        action: `Saved gap scenario run "${saved.name}"`,
+        objectType: "Gap scenario",
+        objectRef: saved.runId,
+        beforeAfter: `${saved.matrixName} -> coverage ${saved.coverage}% (${saved.blockers} blockers)`,
+        reason: leverSummary(saved.levers),
+        traceId: "trc-session",
+      });
+      return saved;
+    },
+    [pushEvent, scenarioSeq],
+  );
+
+  const deleteScenario = useCallback((id: string) => {
+    setGapScenarios((prev) => prev.filter((s) => s.id !== id));
+    setSelectedScenarioId((prev) => (prev === id ? null : prev));
+  }, []);
+
+  const selectScenario = useCallback<DemoState["selectScenario"]>(
+    (id) => {
+      setSelectedScenarioId(id);
+      setGapScenarios((prev) => {
+        const picked = prev.find((s) => s.id === id);
+        if (picked) {
+          pushEvent({
+            actor: REVIEWER,
+            actorType: "Human",
+            action: `Selected preferred gap scenario "${picked.name}"`,
+            objectType: "Gap scenario",
+            objectRef: picked.runId,
+            beforeAfter: `candidate -> preferred version (coverage ${picked.coverage}%)`,
+            reason: "Reviewer selected the best-performing synthetic scenario",
+            traceId: "trc-session",
+          });
+        }
+        return prev;
+      });
+    },
+    [pushEvent],
+  );
+
   const resetDemo = useCallback(() => {
     setClauseDecisions({});
     setSessionEvents([]);
     setAuditReference(null);
+    setGapScenarios([]);
+    setSelectedScenarioId(null);
+    setScenarioSeq(0);
     setGapRowStatusMap(
       Object.fromEntries(gapAnalyses.flatMap((g) => g.rows.map((r) => [r.id, r.reviewStatus] as const))),
     );
@@ -174,6 +240,11 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       auditReference,
       gapRowStatus,
       setGapRowStatus,
+      gapScenarios,
+      saveScenario,
+      deleteScenario,
+      selectedScenarioId,
+      selectScenario,
       reviewStatuses,
       reassign,
       auditEvents: [...sessionEvents, ...seedAuditEvents],
@@ -187,6 +258,11 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       auditReference,
       gapRowStatus,
       setGapRowStatus,
+      gapScenarios,
+      saveScenario,
+      deleteScenario,
+      selectedScenarioId,
+      selectScenario,
       reviewStatuses,
       reassign,
       sessionEvents,
