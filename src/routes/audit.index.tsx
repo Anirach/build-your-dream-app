@@ -60,6 +60,40 @@ const actorMeta: Record<
   System: { tone: "neutral", icon: Workflow },
 };
 
+/** Compact three-step progress indicator for one correction request. */
+function Stepper({ request }: { request: CorrectionRequest }) {
+  const reached = stageIndex(request.status);
+  const rejected = request.status === "Rejected";
+  return (
+    <ol className="mt-3 flex flex-wrap items-center gap-2">
+      {correctionStages.map((s, i) => {
+        const done = !rejected && (i < reached || request.status === "Applied");
+        const current = !rejected && i === reached && request.status !== "Applied";
+        return (
+          <li key={s.key} className="flex items-center gap-2">
+            <span
+              className={cn(
+                "tnum inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-semibold",
+                done && "border-success/25 bg-success-surface text-success",
+                current && "border-info/25 bg-info-surface text-info",
+                !done && !current && "border-border bg-secondary text-muted-foreground",
+              )}
+            >
+              {done ? <Check className="size-3.5 shrink-0" aria-hidden /> : `${i + 1}.`} {s.label}
+            </span>
+            {i < correctionStages.length - 1 && (
+              <span className="text-xs text-muted-foreground" aria-hidden>
+                -&gt;
+              </span>
+            )}
+          </li>
+        );
+      })}
+      {rejected && <StatusBadge label="Rejected at sign-off" tone="danger" />}
+    </ol>
+  );
+}
+
 function Page() {
   const {
     auditEvents,
