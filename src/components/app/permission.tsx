@@ -5,7 +5,12 @@ import { toast } from "sonner";
 import { NoticeBanner } from "@/components/app/primitives";
 import { StatusBadge } from "@/components/app/status";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { permissionLabels, roleName, rolesWith, type Permission } from "@/demo-data/permissions";
 import { useDemoState } from "@/demo-data/store";
 
@@ -47,12 +52,14 @@ export function PermissionButton({
   if (allowed) return button;
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="inline-flex">{button}</span>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs">{reason}</TooltipContent>
-    </Tooltip>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex">{button}</span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">{reason}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
