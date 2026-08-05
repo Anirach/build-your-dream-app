@@ -86,6 +86,39 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [scenarioSeq, setScenarioSeq] = useState(0);
 
+  const actor = actorFor(role);
+
+  const allows = useCallback((permission: Permission) => can(role, permission), [role]);
+  const denialReason = useCallback(
+    (permission: Permission) => denialMessage(role, permission),
+    [role],
+  );
+
+  /** Central authorisation gate: denied attempts are recorded, never applied. */
+  const authorise = useCallback(
+    (permission: Permission, objectType: string, objectRef: string) => {
+      if (can(role, permission)) return true;
+      setSeq((s) => s + 1);
+      setSessionEvents((prev) => [
+        {
+          id: `AUD-${seq + 1}`,
+          timestamp: now(),
+          actor,
+          actorType: "System",
+          action: `Blocked unauthorised attempt: ${permission}`,
+          objectType,
+          objectRef,
+          beforeAfter: "no change - access denied",
+          reason: denialMessage(role, permission),
+          traceId: "trc-session",
+        },
+        ...prev,
+      ]);
+      return false;
+    },
+    [actor, role, seq],
+  );
+
   const pushEvent = useCallback(
     (event: Omit<AuditEventView, "id" | "timestamp">) => {
       setSeq((s) => s + 1);
@@ -99,12 +132,19 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
 
   const decideClause = useCallback<DemoState["decideClause"]>(
     (row, decision) => {
+      const permission: Permission =
+        decision.status === "Approved"
+          ? "mapping.approve"
+          : decision.status === "Rejected"
+            ? "mapping.reject"
+            : "mapping.edit";
+      if (!authorise(permission, "Mapping row", row.id)) return false;
       setClauseDecisions((prev) => ({
         ...prev,
-        [row.id]: { ...decision, reviewer: REVIEWER, at: now() },
+        [row.id]: { ...decision, reviewer: actor, at: now() },
       }));
       pushEvent({
-        actor: REVIEWER,
+        actor,
         actorType: "Human",
         action: `${decision.status} mapping for clause ${row.clauseNo}`,
         objectType: "Mapping row",
@@ -113,17 +153,19 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
         reason: decision.reason ?? "Reviewer decision recorded in local mock state",
         traceId: "trc-session",
       });
+      return true;
     },
-    [pushEvent],
+    [actor, authorise, pushEvent],
   );
 
-  const completeReview = useCallback(
-    (counts: Record<string, number>) => {
+  const completeReview = useCallback<DemoState["completeReview"]>(
+    (counts) => {
+      if (!authorise("review.complete", "Review item", "REV-0091")) return null;
       const ref = `AUDREF-${Math.floor(Math.random() * 900000 + 100000)}`;
       setAuditReference(ref);
       setReviewStatuses((prev) => ({ ...prev, "REV-0091": "Approved" }));
       pushEvent({
-        actor: REVIEWER,
+        actor,
         actorType: "Human",
         action: "Completed mapping review",
         objectType: "Review item",
@@ -134,14 +176,16 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       });
       return ref;
     },
-    [pushEvent],
+    [actor, authorise, pushEvent],
   );
 
   const setGapRowStatus = useCallback<DemoState["setGapRowStatus"]>(
     (id, status, reason) => {
+      const permission: Permission = status === "Approved" ? "gap.approve" : "gap.return";
+      if (!authorise(permission, "Gap matrix row", id)) return false;
       setGapRowStatusMap((prev) => ({ ...prev, [id]: status }));
       pushEvent({
-        actor: REVIEWER,
+        actor,
         actorType: "Human",
         action: `${status === "Approved" ? "Approved" : "Returned"} gap matrix row`,
         objectType: "Gap matrix row",
@@ -150,14 +194,16 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
         reason: reason ?? "Reviewer decision recorded in local mock state",
         traceId: "trc-session",
       });
+      return true;
     },
-    [pushEvent],
+    [actor, authorise, pushEvent],
   );
 
   const reassign = useCallback<DemoState["reassign"]>(
     (id, reviewer) => {
+      if (!authorise("review.reassign", "Review item", id)) return false;
       pushEvent({
-        actor: REVIEWER,
+        actor,
         actorType: "Human",
         action: "Reassigned review item",
         objectType: "Review item",
@@ -166,12 +212,14 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
         reason: "Simulated reassignment",
         traceId: "trc-session",
       });
+      return true;
     },
-    [pushEvent],
+    [actor, authorise, pushEvent],
   );
 
   const saveScenario = useCallback<DemoState["saveScenario"]>(
     (scenario) => {
+      if (!authorise("scenario.run", "Gap scenario", scenario.matrixId)) return null;
       const n = scenarioSeq + 1;
       setScenarioSeq(n);
       const saved: GapScenario = {
@@ -182,7 +230,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       };
       setGapScenarios((prev) => [saved, ...prev]);
       pushEvent({
-        actor: REVIEWER,
+        actor,
         actorType: "Agent",
         action: `Saved gap scenario run "${saved.name}"`,
         objectType: "Gap scenario",
@@ -193,7 +241,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       });
       return saved;
     },
-    [pushEvent, scenarioSeq],
+    [actor, authorise, pushEvent, scenarioSeq],
   );
 
   const deleteScenario = useCallback((id: string) => {
@@ -203,25 +251,45 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
 
   const selectScenario = useCallback<DemoState["selectScenario"]>(
     (id) => {
+      if (!authorise("scenario.select", "Gap scenario", id)) return false;
       setSelectedScenarioId(id);
       setGapScenarios((prev) => {
         const picked = prev.find((s) => s.id === id);
         if (picked) {
           pushEvent({
-            actor: REVIEWER,
+            actor,
             actorType: "Human",
             action: `Selected preferred gap scenario "${picked.name}"`,
             objectType: "Gap scenario",
             objectRef: picked.runId,
             beforeAfter: `candidate -> preferred version (coverage ${picked.coverage}%)`,
-            reason: "Reviewer selected the best-performing synthetic scenario",
+            reason: `${actor} selected the best-performing synthetic scenario`,
             traceId: "trc-session",
           });
         }
         return prev;
       });
+      return true;
     },
-    [pushEvent],
+    [actor, authorise, pushEvent],
+  );
+
+  const recordCorrection = useCallback<DemoState["recordCorrection"]>(
+    ({ objectRef, reason, traceId }) => {
+      if (!authorise("audit.correct", "Audit event", objectRef)) return false;
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: "Recorded correction by reversal",
+        objectType: "Audit event",
+        objectRef,
+        beforeAfter: "original entry retained -> reversing entry appended",
+        reason,
+        traceId,
+      });
+      return true;
+    },
+    [actor, authorise, pushEvent],
   );
 
   const resetDemo = useCallback(() => {
@@ -241,6 +309,9 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     () => ({
       role,
       setRole,
+      can: allows,
+      denialReason,
+      actor,
       clauseDecisions,
       decideClause,
       reviewCompleted: Object.keys(clauseDecisions).length >= mappingRows.length,
@@ -255,11 +326,15 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       selectScenario,
       reviewStatuses,
       reassign,
+      recordCorrection,
       auditEvents: [...sessionEvents, ...seedAuditEvents],
       resetDemo,
     }),
     [
       role,
+      allows,
+      denialReason,
+      actor,
       clauseDecisions,
       decideClause,
       completeReview,
