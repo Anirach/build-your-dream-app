@@ -1,7 +1,7 @@
 // SLA analytics over correction hand-offs. Concept-only: synthetic history plus
 // the hand-offs recorded in this session.
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -25,6 +25,7 @@ import {
   SegmentedBar,
 } from "@/components/app/primitives";
 import { StatusBadge } from "@/components/app/status";
+import { SlaDrillDownSheet, type SlaDrillDown } from "@/components/app/sla-drilldown";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDemoState } from "@/demo-data/store";
 import { mandateTypes, ruleFor } from "@/demo-data/signoff-rules";
@@ -40,6 +41,7 @@ import {
   slaHistory,
   weeklyTrend,
   type SlaAggregate,
+  type SlaRecord,
 } from "@/demo-data/sla-analytics";
 
 export const Route = createFileRoute("/sla-analytics/")({
@@ -70,6 +72,13 @@ function SlaAnalytics() {
   const { correctionRequests, signOffRules } = useDemoState();
   const [dimension, setDimension] = useState<Dimension>("mandate");
   const [stageFilter, setStageFilter] = useState<"all" | "Sign-off" | "Applied">("all");
+  const [drill, setDrill] = useState<SlaDrillDown | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNowMs(Date.now()), 30000);
+    return () => window.clearInterval(t);
+  }, []);
 
   const records = useMemo(() => {
     const all = applyConfiguredTargets(
@@ -86,6 +95,29 @@ function SlaAnalytics() {
   const trend = weeklyTrend(records);
   const liveCount = records.filter((r) => r.live).length;
   const referenceTarget = Math.round(overall.targetHours * 10) / 10;
+
+  const scopeNote =
+    stageFilter === "all" ? "all stages" : `${stageFilter} stage only`;
+  const openDrill = (title: string, description: string, subset: SlaRecord[]) =>
+    setDrill({ title, description, records: subset });
+  const drillWeek = (week: string) =>
+    openDrill(
+      `Week ${week.replace("W", "")} hand-offs`,
+      `Every correction hand-off measured in ${week} (${scopeNote}).`,
+      records.filter((r) => r.week === week),
+    );
+  const drillGroup = (g: SlaAggregate) =>
+    openDrill(
+      g.label,
+      `Corrections behind this ${dimension === "mandate" ? "mandate type" : "reviewer role"} datapoint (${scopeNote}).`,
+      records.filter((r) => (dimension === "mandate" ? r.mandateType === g.key : r.role === g.key)),
+    );
+  const drillStage = (g: SlaAggregate) =>
+    openDrill(
+      g.label,
+      `Corrections measured at the ${g.key} stage.`,
+      records.filter((r) => r.stage === g.key),
+    );
 
   const csv = [
     "dimension,label,hand_offs,breaches,breach_rate_pct,avg_hours,worst_hours",
@@ -159,14 +191,28 @@ function SlaAnalytics() {
         />
       </div>
 
+      <SlaDrillDownSheet
+        drill={drill}
+        requests={correctionRequests}
+        nowMs={nowMs}
+        onClose={() => setDrill(null)}
+      />
+
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_1fr]">
         <SectionCard
           title="Breach trend by week"
-          description="Breach rate and average turnaround per programme week."
+          description="Breach rate and average turnaround per programme week. Click any week to open the corrections behind it."
         >
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trend} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+              <LineChart
+                data={trend}
+                margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
+                className="cursor-pointer"
+                onClick={(state: { activeLabel?: string | number }) => {
+                  if (state?.activeLabel) drillWeek(String(state.activeLabel));
+                }}
+              >
                 <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="week" stroke="var(--muted-foreground)" fontSize={12} />
                 <YAxis
@@ -200,7 +246,8 @@ function SlaAnalytics() {
                   dataKey="breachRate"
                   stroke="var(--destructive)"
                   strokeWidth={2}
-                  dot={{ r: 3 }}
+                  dot={{ r: 3, cursor: "pointer" }}
+                  activeDot={{ r: 5, cursor: "pointer" }}
                 />
                 <Line
                   yAxisId="hours"
@@ -209,7 +256,8 @@ function SlaAnalytics() {
                   stroke="var(--primary)"
                   strokeWidth={2}
                   strokeDasharray="4 3"
-                  dot={{ r: 3 }}
+                  dot={{ r: 3, cursor: "pointer" }}
+                  activeDot={{ r: 5, cursor: "pointer" }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -228,7 +276,7 @@ function SlaAnalytics() {
 
         <SectionCard
           title="Stage mix"
-          description="Where the hand-offs sit and how each stage performs against its own target."
+          description="Where the hand-offs sit and how each stage performs against its own target. Click a stage to drill into its corrections."
         >
           <SegmentedBar
             segments={stages.map((s) => ({
@@ -239,7 +287,12 @@ function SlaAnalytics() {
           />
           <ul className="mt-4 space-y-3">
             {stages.map((s) => (
-              <li key={s.key} className="rounded-lg border border-border p-3">
+              <li key={s.key}>
+                <button
+                  type="button"
+                  onClick={() => drillStage(s)}
+                  className="w-full rounded-lg border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-secondary"
+                >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-navy">{s.label}</p>
                   <StatusBadge
@@ -251,6 +304,7 @@ function SlaAnalytics() {
                   Avg {formatHours(s.avgHours)} · avg target {Math.round(s.targetHours * 10) / 10}h · worst{" "}
                   {formatHours(s.worstHours)} · {s.count} hand-offs
                 </p>
+                </button>
               </li>
             ))}
           </ul>
@@ -260,7 +314,7 @@ function SlaAnalytics() {
       <SectionCard
         className="mt-6"
         title="Breakdown"
-        description="Compare turnaround and breach rate across mandate types or the reviewer roles that handled each hand-off."
+        description="Compare turnaround and breach rate across mandate types or the reviewer roles that handled each hand-off. Click a bar or a row to see the exact corrections and stage timelines."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Tabs value={stageFilter} onValueChange={(v) => setStageFilter(v as typeof stageFilter)}>
@@ -281,7 +335,15 @@ function SlaAnalytics() {
       >
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={groups} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+            <BarChart
+              data={groups}
+              margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
+              className="cursor-pointer"
+              onClick={(state: { activeLabel?: string | number }) => {
+                const g = groups.find((x) => x.label === String(state?.activeLabel));
+                if (g) drillGroup(g);
+              }}
+            >
               <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="label"
@@ -306,7 +368,7 @@ function SlaAnalytics() {
                 strokeDasharray="4 3"
                 label={{ value: `${referenceTarget}h avg target`, position: "right", fontSize: 11 }}
               />
-              <Bar dataKey="avgHours" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="avgHours" radius={[4, 4, 0, 0]} cursor="pointer">
                 {groups.map((g) => (
                   <Cell
                     key={g.key}
@@ -340,8 +402,22 @@ function SlaAnalytics() {
             </thead>
             <tbody>
               {groups.map((g) => (
-                <tr key={g.key} className="border-b border-border/60 last:border-0">
-                  <td className="py-2.5 pr-4 font-medium text-navy">{g.label}</td>
+                <tr
+                  key={g.key}
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => drillGroup(g)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      drillGroup(g);
+                    }
+                  }}
+                  className="cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-secondary"
+                >
+                  <td className="py-2.5 pr-4 font-medium text-navy underline decoration-dotted decoration-primary/40 underline-offset-4">
+                    {g.label}
+                  </td>
                   <td className="tnum py-2.5 pr-4">{g.count}</td>
                   <td className="tnum py-2.5 pr-4">{formatHours(g.avgHours)}</td>
                   <td className="tnum py-2.5 pr-4">{formatHours(g.worstHours)}</td>
