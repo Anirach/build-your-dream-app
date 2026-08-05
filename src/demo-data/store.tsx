@@ -316,6 +316,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
 
   const resetDemo = useCallback(() => {
     setPermissionMatrix(baselineMatrix());
+    setPermissionMatrix(baselineMatrix());
     setRoleAssignments(
       Object.fromEntries(
         (Object.keys(baselineMatrix()) as RoleId[]).map((r) => [r, actorFor(r)] as const),
