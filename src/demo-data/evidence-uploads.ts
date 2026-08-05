@@ -50,6 +50,11 @@ export interface EvidenceAttachment {
   supersedesId?: string;
   /** Attachment id that replaced this revision, once superseded. */
   supersededById?: string;
+  /** Set when this revision was made current again by a rollback. */
+  reinstatedFromId?: string;
+  reinstatedBy?: string;
+  reinstatedAt?: string;
+  reinstatementReason?: string;
 }
 
 /**

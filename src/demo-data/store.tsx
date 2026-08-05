@@ -233,6 +233,8 @@ interface DemoState {
     note: string;
   }) => EvidenceAttachment | null;
   removeEvidenceAttachment: (attachmentId: string, reason: string) => boolean;
+  /** Make an earlier revision current again; every revision is retained. */
+  rollbackEvidenceRevision: (attachmentId: string, reason: string) => boolean;
   requestPacketAttestation: (packetId: PacketId) => boolean;
   packetAttestations: Partial<Record<PacketId, PacketAttestation>>;
   attestPacket: (packetId: PacketId, reason: string) => boolean;
