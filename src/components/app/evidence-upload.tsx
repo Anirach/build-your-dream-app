@@ -2,7 +2,7 @@
 // Files are held in the browser session only for this mockup: nothing is
 // transmitted or stored, and attaching a file does not verify the artifact.
 import { useRef, useState } from "react";
-import { Paperclip, Trash2, Upload } from "lucide-react";
+import { History as HistoryIcon, Paperclip, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { PermissionButton } from "@/components/app/permission";
@@ -282,7 +282,7 @@ export function EvidenceUploadPanel({
                         )
                       }
                     >
-                      <History className="size-3.5" aria-hidden />
+                      <HistoryIcon className="size-3.5" aria-hidden />
                       {expanded ? "Hide" : "Show"} {history.length} earlier revision
                       {history.length === 1 ? "" : "s"}
                     </Button>
@@ -327,7 +327,7 @@ function RevisionRow({
           <span className="truncate">{a.fileName}</span>
           <StatusBadge
             label={`r${a.revision} · ${a.status}`}
-            tone={a.status === "Current" ? "positive" : "neutral"}
+            tone={a.status === "Current" ? "success" : "neutral"}
           />
         </p>
         <p className="text-xs text-muted-foreground">
