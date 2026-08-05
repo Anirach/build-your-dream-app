@@ -427,7 +427,36 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <main id="main" className="min-w-0 flex-1 pb-24 lg:pb-0">
           <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-5 lg:px-8 lg:py-8">
-            {children}
+            {authorisedHere ? (
+              children
+            ) : (
+              <div className="mx-auto max-w-xl rounded-xl border border-warning/30 bg-warning-surface p-6 text-center">
+                <ShieldCheck className="mx-auto size-6 text-warning" aria-hidden />
+                <h1 className="mt-3 text-lg font-semibold text-navy">
+                  This screen is outside your mandate
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {activeRole.name} does not have access to {pathname}. The attempt is recorded in
+                  the audit trail. Switch role from the profile menu or return to your home screen.
+                </p>
+                <div className="mt-4 flex justify-center gap-2">
+                  <Button asChild size="sm">
+                    <Link to={homeFor}>Go to my home screen</Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      signOut();
+                      toast.info("Signed out");
+                    }}
+                  >
+                    <LogOut className="size-4" aria-hidden /> Log out
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           <footer className="border-t border-border px-4 py-6 text-center text-xs text-muted-foreground sm:px-5 lg:px-8">
             <p>BDMS Confidential | Concept mockup using synthetic data | Not clinical guidance</p>
