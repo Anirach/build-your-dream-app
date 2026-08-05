@@ -535,3 +535,30 @@ function SlaAnalytics() {
     </div>
   );
 }
+
+/**
+ * Trend-line dot that encodes sample size: weeks with fewer than the reliable
+ * threshold of hand-offs render hollow so thin datapoints are visually obvious.
+ */
+function SampleDot(props: {
+  color?: string;
+  cx?: number;
+  cy?: number;
+  payload?: { count?: number; week?: string };
+}) {
+  const { cx, cy, color, payload } = props;
+  if (cx === undefined || cy === undefined) return null;
+  const thin = (payload?.count ?? 0) < minReliableSample;
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={thin ? 4 : 3}
+      fill={thin ? "var(--card)" : color}
+      stroke={thin ? "var(--muted-foreground)" : color}
+      strokeWidth={thin ? 1.5 : 1}
+      strokeDasharray={thin ? "2 2" : undefined}
+      style={{ cursor: "pointer" }}
+    />
+  );
+}
