@@ -1890,7 +1890,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       removeEvidenceAttachment,
       requestEvidenceRollback,
       decideEvidenceRollback,
-      evidenceRollbackRequests: rollbackRequests,
+      rollbackRequests,
       requestPacketAttestation,
       packetAttestations,
       attestPacket,
