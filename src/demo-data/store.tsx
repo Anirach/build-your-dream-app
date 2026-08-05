@@ -77,6 +77,10 @@ export interface ClauseDecision {
 interface DemoState {
   role: RoleId;
   setRole: (role: RoleId) => void;
+  /** Simulated session sign-in for the mockup. No real credentials. */
+  signedIn: boolean;
+  signIn: (role: RoleId) => void;
+  signOut: () => void;
   /** Simulated authorisation check for the active role. */
   can: (permission: Permission) => boolean;
   /** Human-readable reason the active role is blocked. */
@@ -190,6 +194,7 @@ const DemoContext = createContext<DemoState | null>(null);
 
 export function DemoStateProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<RoleId>("reviewer");
+  const [signedIn, setSignedIn] = useState(false);
   const [clauseDecisions, setClauseDecisions] = useState<Record<string, ClauseDecision>>({});
   const [sessionEvents, setSessionEvents] = useState<AuditEventView[]>([]);
   const [auditReference, setAuditReference] = useState<string | null>(null);
@@ -1253,6 +1258,12 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     () => ({
       role,
       setRole,
+      signedIn,
+      signIn: (next: RoleId) => {
+        setRole(next);
+        setSignedIn(true);
+      },
+      signOut: () => setSignedIn(false),
       can: allows,
       denialReason,
       actor,
@@ -1308,6 +1319,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     }),
     [
       role,
+      signedIn,
       allows,
       denialReason,
       actor,

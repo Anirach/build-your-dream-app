@@ -219,7 +219,7 @@ export function DataSourceDetailDrawer({
                 <Button asChild size="sm">
                   <Link
                     to="/data-intake/import/$importType"
-                    params={{ importType: source.importType }}
+                    params={{ importType: source.importType }} search={{ step: 0 }}
                     onClick={onClose}
                   >
                     <FileInput className="size-4" aria-hidden /> Start guided import
