@@ -69,7 +69,7 @@ function StandardsLibrary() {
         crumbs={[{ label: "SHSIRC - Dhaka", to: "/" }, { label: "Standards Library" }]}
         title="Standards Library"
         subtitle="Explore the synthetic standards corpus used across the commissioning mockup."
-        actions={
+        secondary={
           <DemoDownloadButton
             filename="standards-library-demo.csv"
             label="Export results"
