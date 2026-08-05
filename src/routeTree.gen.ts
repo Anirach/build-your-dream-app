@@ -21,6 +21,7 @@ import { Route as StandardsIndexRouteImport } from './routes/standards.index'
 import { Route as StandardsStandardIdRouteImport } from './routes/standards.$standardId'
 import { Route as WorkbenchIndexRouteImport } from './routes/workbench.index'
 import { Route as DataIntakeImportImportTypeRouteImport } from './routes/data-intake.import.$importType'
+import { Route as DataIntakeProposalsProposalIdRouteImport } from './routes/data-intake.proposals.$proposalId'
 import { Route as ProgrammeModulesModuleIdRouteImport } from './routes/programme.modules.$moduleId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -84,6 +85,12 @@ const DataIntakeImportImportTypeRoute =
     path: '/data-intake/import/$importType',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DataIntakeProposalsProposalIdRoute =
+  DataIntakeProposalsProposalIdRouteImport.update({
+    id: '/data-intake/proposals/$proposalId',
+    path: '/data-intake/proposals/$proposalId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ProgrammeModulesModuleIdRoute =
   ProgrammeModulesModuleIdRouteImport.update({
     id: '/programme/modules/$moduleId',
@@ -104,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/standards/': typeof StandardsIndexRoute
   '/workbench/': typeof WorkbenchIndexRoute
   '/data-intake/import/$importType': typeof DataIntakeImportImportTypeRoute
+  '/data-intake/proposals/$proposalId': typeof DataIntakeProposalsProposalIdRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
 }
 export interface FileRoutesByTo {
@@ -119,6 +127,7 @@ export interface FileRoutesByTo {
   '/standards': typeof StandardsIndexRoute
   '/workbench': typeof WorkbenchIndexRoute
   '/data-intake/import/$importType': typeof DataIntakeImportImportTypeRoute
+  '/data-intake/proposals/$proposalId': typeof DataIntakeProposalsProposalIdRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
 }
 export interface FileRoutesById {
@@ -135,6 +144,7 @@ export interface FileRoutesById {
   '/standards/': typeof StandardsIndexRoute
   '/workbench/': typeof WorkbenchIndexRoute
   '/data-intake/import/$importType': typeof DataIntakeImportImportTypeRoute
+  '/data-intake/proposals/$proposalId': typeof DataIntakeProposalsProposalIdRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
 }
 export interface FileRouteTypes {
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/standards/'
     | '/workbench/'
     | '/data-intake/import/$importType'
+    | '/data-intake/proposals/$proposalId'
     | '/programme/modules/$moduleId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/standards'
     | '/workbench'
     | '/data-intake/import/$importType'
+    | '/data-intake/proposals/$proposalId'
     | '/programme/modules/$moduleId'
   id:
     | '__root__'
@@ -182,6 +194,7 @@ export interface FileRouteTypes {
     | '/standards/'
     | '/workbench/'
     | '/data-intake/import/$importType'
+    | '/data-intake/proposals/$proposalId'
     | '/programme/modules/$moduleId'
   fileRoutesById: FileRoutesById
 }
@@ -198,6 +211,7 @@ export interface RootRouteChildren {
   StandardsIndexRoute: typeof StandardsIndexRoute
   WorkbenchIndexRoute: typeof WorkbenchIndexRoute
   DataIntakeImportImportTypeRoute: typeof DataIntakeImportImportTypeRoute
+  DataIntakeProposalsProposalIdRoute: typeof DataIntakeProposalsProposalIdRoute
   ProgrammeModulesModuleIdRoute: typeof ProgrammeModulesModuleIdRoute
 }
 
@@ -287,6 +301,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DataIntakeImportImportTypeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/data-intake/proposals/$proposalId': {
+      id: '/data-intake/proposals/$proposalId'
+      path: '/data-intake/proposals/$proposalId'
+      fullPath: '/data-intake/proposals/$proposalId'
+      preLoaderRoute: typeof DataIntakeProposalsProposalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/programme/modules/$moduleId': {
       id: '/programme/modules/$moduleId'
       path: '/programme/modules/$moduleId'
@@ -310,6 +331,7 @@ const rootRouteChildren: RootRouteChildren = {
   StandardsIndexRoute: StandardsIndexRoute,
   WorkbenchIndexRoute: WorkbenchIndexRoute,
   DataIntakeImportImportTypeRoute: DataIntakeImportImportTypeRoute,
+  DataIntakeProposalsProposalIdRoute: DataIntakeProposalsProposalIdRoute,
   ProgrammeModulesModuleIdRoute: ProgrammeModulesModuleIdRoute,
 }
 export const routeTree = rootRouteImport
