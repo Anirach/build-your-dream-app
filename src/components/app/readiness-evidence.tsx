@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { PermissionButton } from "@/components/app/permission";
+import { EvidenceUploadPanel } from "@/components/app/evidence-upload";
 import { KeyValue, MetricCard, NoticeBanner, SectionCard } from "@/components/app/primitives";
 import { StatusBadge } from "@/components/app/status";
 import {
@@ -32,7 +33,8 @@ import { readinessPackets } from "@/demo-data/readiness";
 import { useDemoState } from "@/demo-data/store";
 
 export function ReadinessEvidence() {
-  const { evidenceRegister, updateEvidenceState } = useDemoState();
+  const { evidenceRegister, updateEvidenceState, evidenceAttachments, attachmentsFor } =
+    useDemoState();
   const [packetFilter, setPacketFilter] = useState("all");
   const [stateFilter, setStateFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
@@ -69,8 +71,8 @@ export function ReadinessEvidence() {
   return (
     <div className="space-y-6">
       <NoticeBanner>
-        The register tracks references only. No document is uploaded or stored in this mockup, and
-        no reference implies the underlying artifact has been verified.
+        Files attached here are held in this browser session only: nothing is transmitted or
+        stored, and neither a reference nor an attached file implies the artifact is verified.
       </NoticeBanner>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -85,7 +87,11 @@ export function ReadinessEvidence() {
           hint="Counts towards an acceptance gate"
         />
         <MetricCard label="Missing" value={missing} hint="No reference recorded yet" />
-        <MetricCard label="Needs correction" value={correction} hint="Returned to the owner" />
+        <MetricCard
+          label="Files attached"
+          value={evidenceAttachments.length}
+          hint={`${correction} artifact(s) need correction`}
+        />
       </div>
 
       <SectionCard
@@ -147,6 +153,7 @@ export function ReadinessEvidence() {
                 <TableHead>Level</TableHead>
                 <TableHead>Version</TableHead>
                 <TableHead>State</TableHead>
+                <TableHead className="text-right">Files</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
@@ -167,6 +174,9 @@ export function ReadinessEvidence() {
                   <TableCell>
                     <StatusBadge label={a.state} tone={evidenceStateTone(a.state)} />
                   </TableCell>
+                  <TableCell className="tnum text-right text-xs text-muted-foreground">
+                    {attachmentsFor(a.id).length}
+                  </TableCell>
                   <TableCell className="text-right">
                     <PermissionButton
                       permission="readiness.update"
@@ -181,7 +191,7 @@ export function ReadinessEvidence() {
               ))}
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                     No artifacts match these filters.
                   </TableCell>
                 </TableRow>
@@ -288,6 +298,12 @@ export function ReadinessEvidence() {
                 >
                   Save state and reason
                 </PermissionButton>
+
+                <EvidenceUploadPanel
+                  artifact={artifact}
+                  linkedState={draftState}
+                  reference={reference}
+                />
               </div>
             </>
           )}
