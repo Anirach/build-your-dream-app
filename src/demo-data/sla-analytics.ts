@@ -2,10 +2,16 @@
 // breach rates, average turnaround and weekly trends by mandate type and by the
 // reviewer role that handled the stage. History below is synthetic so the
 // analytics view is never empty; live session requests are folded in on top.
-import { parseStamp, slaTargetHours } from "./correction-timeline";
+import { parseStamp, requestTargets, slaTargetHours } from "./correction-timeline";
 import type { CorrectionRequest } from "./corrections";
 import { roleName } from "./permissions";
-import { mandateTypes, type MandateType } from "./signoff-rules";
+import {
+  mandateTypes,
+  ruleFor,
+  targetHoursFor,
+  type MandateType,
+  type SignOffRuleSet,
+} from "./signoff-rules";
 import type { RoleId } from "./types";
 
 export type SlaStage = "Sign-off" | "Applied";
@@ -112,6 +118,7 @@ export function liveSlaRecords(requests: CorrectionRequest[]): SlaRecord[] {
   const out: SlaRecord[] = [];
   requests.forEach((r) => {
     let prev = parseStamp(r.requestedAt)?.getTime() ?? null;
+    const targets = requestTargets(r);
     r.history.forEach((h, i) => {
       const at = parseStamp(h.at);
       if (!at) return;
@@ -126,7 +133,7 @@ export function liveSlaRecords(requests: CorrectionRequest[]): SlaRecord[] {
           role: roleByName.get(h.role) ?? "reviewer",
           stage,
           hours: (at.getTime() - prev) / 3600000,
-          targetHours: slaTargetHours[stage],
+          targetHours: targets[stage],
           week: weekOf(at),
           live: true,
         });
@@ -135,6 +142,21 @@ export function liveSlaRecords(requests: CorrectionRequest[]): SlaRecord[] {
     });
   });
   return out;
+}
+
+/**
+ * Re-score records against the configured targets so analytics follow the rules
+ * editor. Live records keep the target snapshotted on their request.
+ */
+export function applyConfiguredTargets(
+  records: SlaRecord[],
+  rules: SignOffRuleSet,
+): SlaRecord[] {
+  return records.map((r) =>
+    r.live
+      ? r
+      : { ...r, targetHours: targetHoursFor(ruleFor(rules, r.mandateType), r.stage) },
+  );
 }
 
 export interface SlaAggregate {
