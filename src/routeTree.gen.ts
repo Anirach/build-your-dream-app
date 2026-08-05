@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuditIndexRouteImport } from './routes/audit.index'
+import { Route as DataIntakeIndexRouteImport } from './routes/data-intake.index'
 import { Route as GapAnalysisIndexRouteImport } from './routes/gap-analysis.index'
 import { Route as ProgrammeIndexRouteImport } from './routes/programme.index'
 import { Route as ReviewsIndexRouteImport } from './routes/reviews.index'
@@ -19,6 +20,8 @@ import { Route as SlaAnalyticsIndexRouteImport } from './routes/sla-analytics.in
 import { Route as StandardsIndexRouteImport } from './routes/standards.index'
 import { Route as StandardsStandardIdRouteImport } from './routes/standards.$standardId'
 import { Route as WorkbenchIndexRouteImport } from './routes/workbench.index'
+import { Route as DataIntakeImportImportTypeRouteImport } from './routes/data-intake.import.$importType'
+import { Route as DataIntakeProposalsProposalIdRouteImport } from './routes/data-intake.proposals.$proposalId'
 import { Route as ProgrammeModulesModuleIdRouteImport } from './routes/programme.modules.$moduleId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuditIndexRoute = AuditIndexRouteImport.update({
   id: '/audit/',
   path: '/audit/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataIntakeIndexRoute = DataIntakeIndexRouteImport.update({
+  id: '/data-intake/',
+  path: '/data-intake/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GapAnalysisIndexRoute = GapAnalysisIndexRouteImport.update({
@@ -71,6 +79,18 @@ const WorkbenchIndexRoute = WorkbenchIndexRouteImport.update({
   path: '/workbench/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DataIntakeImportImportTypeRoute =
+  DataIntakeImportImportTypeRouteImport.update({
+    id: '/data-intake/import/$importType',
+    path: '/data-intake/import/$importType',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DataIntakeProposalsProposalIdRoute =
+  DataIntakeProposalsProposalIdRouteImport.update({
+    id: '/data-intake/proposals/$proposalId',
+    path: '/data-intake/proposals/$proposalId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ProgrammeModulesModuleIdRoute =
   ProgrammeModulesModuleIdRouteImport.update({
     id: '/programme/modules/$moduleId',
@@ -82,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit/': typeof AuditIndexRoute
+  '/data-intake/': typeof DataIntakeIndexRoute
   '/gap-analysis/': typeof GapAnalysisIndexRoute
   '/programme/': typeof ProgrammeIndexRoute
   '/reviews/': typeof ReviewsIndexRoute
@@ -89,12 +110,15 @@ export interface FileRoutesByFullPath {
   '/sla-analytics/': typeof SlaAnalyticsIndexRoute
   '/standards/': typeof StandardsIndexRoute
   '/workbench/': typeof WorkbenchIndexRoute
+  '/data-intake/import/$importType': typeof DataIntakeImportImportTypeRoute
+  '/data-intake/proposals/$proposalId': typeof DataIntakeProposalsProposalIdRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit': typeof AuditIndexRoute
+  '/data-intake': typeof DataIntakeIndexRoute
   '/gap-analysis': typeof GapAnalysisIndexRoute
   '/programme': typeof ProgrammeIndexRoute
   '/reviews': typeof ReviewsIndexRoute
@@ -102,6 +126,8 @@ export interface FileRoutesByTo {
   '/sla-analytics': typeof SlaAnalyticsIndexRoute
   '/standards': typeof StandardsIndexRoute
   '/workbench': typeof WorkbenchIndexRoute
+  '/data-intake/import/$importType': typeof DataIntakeImportImportTypeRoute
+  '/data-intake/proposals/$proposalId': typeof DataIntakeProposalsProposalIdRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
 }
 export interface FileRoutesById {
@@ -109,6 +135,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit/': typeof AuditIndexRoute
+  '/data-intake/': typeof DataIntakeIndexRoute
   '/gap-analysis/': typeof GapAnalysisIndexRoute
   '/programme/': typeof ProgrammeIndexRoute
   '/reviews/': typeof ReviewsIndexRoute
@@ -116,6 +143,8 @@ export interface FileRoutesById {
   '/sla-analytics/': typeof SlaAnalyticsIndexRoute
   '/standards/': typeof StandardsIndexRoute
   '/workbench/': typeof WorkbenchIndexRoute
+  '/data-intake/import/$importType': typeof DataIntakeImportImportTypeRoute
+  '/data-intake/proposals/$proposalId': typeof DataIntakeProposalsProposalIdRoute
   '/programme/modules/$moduleId': typeof ProgrammeModulesModuleIdRoute
 }
 export interface FileRouteTypes {
@@ -124,6 +153,7 @@ export interface FileRouteTypes {
     | '/'
     | '/standards/$standardId'
     | '/audit/'
+    | '/data-intake/'
     | '/gap-analysis/'
     | '/programme/'
     | '/reviews/'
@@ -131,12 +161,15 @@ export interface FileRouteTypes {
     | '/sla-analytics/'
     | '/standards/'
     | '/workbench/'
+    | '/data-intake/import/$importType'
+    | '/data-intake/proposals/$proposalId'
     | '/programme/modules/$moduleId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/standards/$standardId'
     | '/audit'
+    | '/data-intake'
     | '/gap-analysis'
     | '/programme'
     | '/reviews'
@@ -144,12 +177,15 @@ export interface FileRouteTypes {
     | '/sla-analytics'
     | '/standards'
     | '/workbench'
+    | '/data-intake/import/$importType'
+    | '/data-intake/proposals/$proposalId'
     | '/programme/modules/$moduleId'
   id:
     | '__root__'
     | '/'
     | '/standards/$standardId'
     | '/audit/'
+    | '/data-intake/'
     | '/gap-analysis/'
     | '/programme/'
     | '/reviews/'
@@ -157,6 +193,8 @@ export interface FileRouteTypes {
     | '/sla-analytics/'
     | '/standards/'
     | '/workbench/'
+    | '/data-intake/import/$importType'
+    | '/data-intake/proposals/$proposalId'
     | '/programme/modules/$moduleId'
   fileRoutesById: FileRoutesById
 }
@@ -164,6 +202,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   StandardsStandardIdRoute: typeof StandardsStandardIdRoute
   AuditIndexRoute: typeof AuditIndexRoute
+  DataIntakeIndexRoute: typeof DataIntakeIndexRoute
   GapAnalysisIndexRoute: typeof GapAnalysisIndexRoute
   ProgrammeIndexRoute: typeof ProgrammeIndexRoute
   ReviewsIndexRoute: typeof ReviewsIndexRoute
@@ -171,6 +210,8 @@ export interface RootRouteChildren {
   SlaAnalyticsIndexRoute: typeof SlaAnalyticsIndexRoute
   StandardsIndexRoute: typeof StandardsIndexRoute
   WorkbenchIndexRoute: typeof WorkbenchIndexRoute
+  DataIntakeImportImportTypeRoute: typeof DataIntakeImportImportTypeRoute
+  DataIntakeProposalsProposalIdRoute: typeof DataIntakeProposalsProposalIdRoute
   ProgrammeModulesModuleIdRoute: typeof ProgrammeModulesModuleIdRoute
 }
 
@@ -188,6 +229,13 @@ declare module '@tanstack/react-router' {
       path: '/audit'
       fullPath: '/audit/'
       preLoaderRoute: typeof AuditIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-intake/': {
+      id: '/data-intake/'
+      path: '/data-intake'
+      fullPath: '/data-intake/'
+      preLoaderRoute: typeof DataIntakeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gap-analysis/': {
@@ -246,6 +294,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkbenchIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/data-intake/import/$importType': {
+      id: '/data-intake/import/$importType'
+      path: '/data-intake/import/$importType'
+      fullPath: '/data-intake/import/$importType'
+      preLoaderRoute: typeof DataIntakeImportImportTypeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-intake/proposals/$proposalId': {
+      id: '/data-intake/proposals/$proposalId'
+      path: '/data-intake/proposals/$proposalId'
+      fullPath: '/data-intake/proposals/$proposalId'
+      preLoaderRoute: typeof DataIntakeProposalsProposalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/programme/modules/$moduleId': {
       id: '/programme/modules/$moduleId'
       path: '/programme/modules/$moduleId'
@@ -260,6 +322,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   StandardsStandardIdRoute: StandardsStandardIdRoute,
   AuditIndexRoute: AuditIndexRoute,
+  DataIntakeIndexRoute: DataIntakeIndexRoute,
   GapAnalysisIndexRoute: GapAnalysisIndexRoute,
   ProgrammeIndexRoute: ProgrammeIndexRoute,
   ReviewsIndexRoute: ReviewsIndexRoute,
@@ -267,6 +330,8 @@ const rootRouteChildren: RootRouteChildren = {
   SlaAnalyticsIndexRoute: SlaAnalyticsIndexRoute,
   StandardsIndexRoute: StandardsIndexRoute,
   WorkbenchIndexRoute: WorkbenchIndexRoute,
+  DataIntakeImportImportTypeRoute: DataIntakeImportImportTypeRoute,
+  DataIntakeProposalsProposalIdRoute: DataIntakeProposalsProposalIdRoute,
   ProgrammeModulesModuleIdRoute: ProgrammeModulesModuleIdRoute,
 }
 export const routeTree = rootRouteImport
