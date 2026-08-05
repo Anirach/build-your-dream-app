@@ -3,9 +3,10 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/page-header";
 import { KeyValue, NoticeBanner, SectionCard } from "@/components/app/primitives";
 import { standardById, SYNTHETIC_LABEL } from "@/demo-data/standards";
+import type { StandardRecord } from "@/demo-data/types";
 
 export const Route = createFileRoute("/standards/$standardId")({
-  loader: ({ params }) => {
+  loader: ({ params }): { standard: StandardRecord } => {
     const standard = standardById(params.standardId);
     if (!standard) throw notFound();
     return { standard };
@@ -39,7 +40,7 @@ function StandardDetail() {
       <div className="grid gap-5 lg:grid-cols-3">
         <SectionCard className="lg:col-span-2" title="Measurable elements">
           <ul className="space-y-2 text-sm">
-            {standard.measurableElements.map((me) => (
+            {standard.measurableElements.map((me: { id: string; text: string }) => (
               <li key={me.id} className="rounded-lg border border-border px-3 py-2">
                 <span className="tnum font-semibold text-navy">{me.id}</span> {me.text}
               </li>
