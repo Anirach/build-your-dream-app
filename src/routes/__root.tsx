@@ -13,7 +13,9 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { AppShell } from "@/components/app/app-shell";
+import { LoginScreen } from "@/components/app/login-screen";
 import { DemoStateProvider } from "@/demo-data/store";
+import { useDemoState } from "@/demo-data/store";
 
 function NotFoundComponent() {
   return (
@@ -138,12 +140,21 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <DemoStateProvider>
-        <AppShell>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-        </AppShell>
+        <SessionGate />
         <Toaster position="top-right" />
       </DemoStateProvider>
     </QueryClientProvider>
+  );
+}
+
+/** Simulated session gate: shows the login screen until a sample role signs in. */
+function SessionGate() {
+  const { signedIn } = useDemoState();
+  if (!signedIn) return <LoginScreen />;
+  return (
+    <AppShell>
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
+    </AppShell>
   );
 }

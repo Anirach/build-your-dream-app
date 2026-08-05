@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuditIndexRouteImport } from './routes/audit.index'
 import { Route as DataIntakeIndexRouteImport } from './routes/data-intake.index'
 import { Route as GapAnalysisIndexRouteImport } from './routes/gap-analysis.index'
@@ -27,6 +28,11 @@ import { Route as ProgrammeModulesModuleIdRouteImport } from './routes/programme
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuditIndexRoute = AuditIndexRouteImport.update({
@@ -100,6 +106,7 @@ const ProgrammeModulesModuleIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit/': typeof AuditIndexRoute
   '/data-intake/': typeof DataIntakeIndexRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit': typeof AuditIndexRoute
   '/data-intake': typeof DataIntakeIndexRoute
@@ -133,6 +141,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/standards/$standardId': typeof StandardsStandardIdRoute
   '/audit/': typeof AuditIndexRoute
   '/data-intake/': typeof DataIntakeIndexRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
     | '/standards/$standardId'
     | '/audit/'
     | '/data-intake/'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/standards/$standardId'
     | '/audit'
     | '/data-intake'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/login'
     | '/standards/$standardId'
     | '/audit/'
     | '/data-intake/'
@@ -200,6 +212,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
   StandardsStandardIdRoute: typeof StandardsStandardIdRoute
   AuditIndexRoute: typeof AuditIndexRoute
   DataIntakeIndexRoute: typeof DataIntakeIndexRoute
@@ -222,6 +235,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/audit/': {
@@ -320,6 +340,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
   StandardsStandardIdRoute: StandardsStandardIdRoute,
   AuditIndexRoute: AuditIndexRoute,
   DataIntakeIndexRoute: DataIntakeIndexRoute,
