@@ -424,6 +424,13 @@ function Page() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="tnum font-mono text-xs text-muted-foreground">{r.id}</span>
                         <StatusBadge label={r.status} tone={statusTone[r.status]} />
+                        <StatusBadge label={r.mandateType} tone="neutral" />
+                        <StatusBadge
+                          label={`${r.signOffs.length} of ${r.rule.requiredApprovals} sign-offs`}
+                          tone={
+                            r.signOffs.length >= r.rule.requiredApprovals ? "success" : "warning"
+                          }
+                        />
                       </div>
                       <p className="mt-1.5 text-sm font-semibold text-navy">{r.proposedChange}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
@@ -446,9 +453,13 @@ function Page() {
                     <KeyValue
                       items={[
                         { label: "Reason", value: r.reason },
+                        { label: "Sign-off rule", value: ruleSummary(r.rule) },
                         {
-                          label: "Sign-off",
-                          value: r.signedOffBy ?? "Not yet countersigned",
+                          label: "Countersigned by",
+                          value:
+                            r.signOffs.length === 0
+                              ? "Not yet countersigned"
+                              : r.signOffs.map((s) => `${s.actor} (${s.role})`).join("; "),
                         },
                         { label: "Applied by", value: r.appliedBy ?? "Not applied" },
                       ]}
@@ -489,9 +500,16 @@ function Page() {
                                 onClick={() => {
                                   if (signOffCorrection(r.id, note)) {
                                     setNotes((p) => ({ ...p, [r.id]: "" }));
-                                    toast.success(`${r.id} signed off`, {
-                                      description: "Ready to apply as a reversal.",
-                                    });
+                                    const done = r.signOffs.length + 1;
+                                    toast.success(
+                                      `${r.id}: sign-off ${done} of ${r.rule.requiredApprovals} recorded`,
+                                      {
+                                        description:
+                                          done >= r.rule.requiredApprovals
+                                            ? "Rule satisfied. Ready to apply as a reversal."
+                                            : `${r.rule.requiredApprovals - done} more countersignature(s) required by the ${r.mandateType} rule.`,
+                                      },
+                                    );
                                   }
                                 }}
                               >
