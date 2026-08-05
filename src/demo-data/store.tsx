@@ -25,6 +25,18 @@ import {
 import { mappingRows } from "./mapping";
 import { gapAnalyses } from "./gaps";
 import { reviewQueue } from "./reviews";
+import { modules, STAGES } from "./modules";
+import {
+  countOutcomes,
+  datasetFor,
+  formFor,
+  recordKindLabels,
+  seedIntakeRecords,
+  seedLedger,
+  seedProposals,
+  seedReceipts,
+  type ImportRowView,
+} from "./intake";
 import { leverSummary, type GapScenario } from "./scenarios";
 import {
   actorFor,
@@ -34,7 +46,19 @@ import {
   type Permission,
   type PermissionMatrix,
 } from "./permissions";
-import type { AuditEventView, MappingRowView, ReviewQueueItem, RoleId } from "./types";
+import type {
+  AuditEventView,
+  ColumnMappingView,
+  IntakeRecordKind,
+  IntakeReceiptView,
+  LedgerEntryView,
+  MappingRowView,
+  ModuleSummary,
+  ProgrammeRecordDraft,
+  RegistryChangeProposalView,
+  ReviewQueueItem,
+  RoleId,
+} from "./types";
 
 export interface ClauseDecision {
   status: MappingRowView["reviewStatus"];
@@ -94,6 +118,45 @@ interface DemoState {
   resetRolePermissions: (role: RoleId) => boolean;
   roleAssignments: Record<RoleId, string>;
   assignRoleActor: (role: RoleId, personName: string) => boolean;
+  /* ---- Governed data intake and administration ---- */
+  /** Registry modules in force for this session, including approved proposals. */
+  activeModules: ModuleSummary[];
+  moduleByCode: (code: string) => ModuleSummary | undefined;
+  intakeRecords: ProgrammeRecordDraft[];
+  addIntakeRecord: (input: {
+    kind: IntakeRecordKind;
+    values: Record<string, string>;
+    asDraft: boolean;
+  }) => ProgrammeRecordDraft | null;
+  correctIntakeRecord: (
+    id: string,
+    field: string,
+    value: string,
+    reason: string,
+  ) => boolean;
+  ledger: LedgerEntryView[];
+  addLedgerEntry: (values: Record<string, string>) => LedgerEntryView | null;
+  correctLedgerEntry: (
+    id: string,
+    input: { days: number; workPackage: string; activity: string; reason: string },
+  ) => boolean;
+  receipts: IntakeReceiptView[];
+  commitImport: (input: {
+    importType: string;
+    sourceName: string;
+    reason: string;
+    mapping: ColumnMappingView[];
+    rows: ImportRowView[];
+    acknowledgedWarnings: boolean;
+  }) => IntakeReceiptView | null;
+  proposals: RegistryChangeProposalView[];
+  submitProposal: (
+    input: Omit<
+      RegistryChangeProposalView,
+      "id" | "requestedBy" | "requestedAt" | "status" | "validation"
+    > & { validation: RegistryChangeProposalView["validation"] },
+  ) => RegistryChangeProposalView | null;
+  decideProposal: (id: string, approve: boolean, reason: string) => boolean;
   auditEvents: AuditEventView[];
   resetDemo: () => void;
 }
@@ -138,6 +201,15 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       (Object.keys(baselineMatrix()) as RoleId[]).map((r) => [r, actorFor(r)] as const),
     ) as Record<RoleId, string>,
   );
+  const [activeModules, setActiveModules] = useState<ModuleSummary[]>(modules);
+  const [intakeRecords, setIntakeRecords] = useState<ProgrammeRecordDraft[]>(seedIntakeRecords);
+  const [intakeSeq, setIntakeSeq] = useState(3);
+  const [ledger, setLedger] = useState<LedgerEntryView[]>(seedLedger);
+  const [ledgerSeq, setLedgerSeq] = useState(91);
+  const [receipts, setReceipts] = useState<IntakeReceiptView[]>(seedReceipts);
+  const [receiptSeq, setReceiptSeq] = useState(42);
+  const [proposals, setProposals] = useState<RegistryChangeProposalView[]>(seedProposals);
+  const [proposalSeq, setProposalSeq] = useState(7);
 
   const actor = roleAssignments[role] ?? actorFor(role);
 
