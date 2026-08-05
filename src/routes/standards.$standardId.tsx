@@ -3,9 +3,10 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/page-header";
 import { KeyValue, NoticeBanner, SectionCard } from "@/components/app/primitives";
 import { standardById, SYNTHETIC_LABEL } from "@/demo-data/standards";
+import type { StandardRecord } from "@/demo-data/types";
 
 export const Route = createFileRoute("/standards/$standardId")({
-  loader: ({ params }) => {
+  loader: ({ params }): { standard: StandardRecord } => {
     const standard = standardById(params.standardId);
     if (!standard) throw notFound();
     return { standard };
