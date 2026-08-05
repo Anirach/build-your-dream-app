@@ -266,6 +266,12 @@ function SlaAnalytics() {
                   formatter={(value: number, name) =>
                     name === "breachRate" ? [`${value}%`, "Breach rate"] : [`${value}h`, "Avg turnaround"]
                   }
+                  labelFormatter={(label: string) => {
+                    const point = trend.find((t) => t.week === label);
+                    return point
+                      ? `${label} · n=${point.count}${point.count < minReliableSample ? " (small sample)" : ""}`
+                      : label;
+                  }}
                 />
                 <Line
                   yAxisId="rate"
@@ -273,7 +279,7 @@ function SlaAnalytics() {
                   dataKey="breachRate"
                   stroke="var(--destructive)"
                   strokeWidth={2}
-                  dot={{ r: 3, cursor: "pointer" }}
+                  dot={<SampleDot color="var(--destructive)" />}
                   activeDot={{ r: 5, cursor: "pointer" }}
                 />
                 <Line
@@ -283,7 +289,7 @@ function SlaAnalytics() {
                   stroke="var(--primary)"
                   strokeWidth={2}
                   strokeDasharray="4 3"
-                  dot={{ r: 3, cursor: "pointer" }}
+                  dot={<SampleDot color="var(--primary)" />}
                   activeDot={{ r: 5, cursor: "pointer" }}
                 />
               </LineChart>
@@ -298,7 +304,21 @@ function SlaAnalytics() {
               <span className="h-0.5 w-4 bg-primary" aria-hidden />
               <dt>Average turnaround</dt>
             </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="size-2.5 rounded-full border border-muted-foreground bg-card"
+                aria-hidden
+              />
+              <dt>Hollow dot = fewer than {minReliableSample} hand-offs that week</dt>
+            </div>
           </dl>
+          <ul className="tnum mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {trend.map((t) => (
+              <li key={t.week} className={t.count < minReliableSample ? "text-warning" : undefined}>
+                {t.week} n={t.count}
+              </li>
+            ))}
+          </ul>
         </SectionCard>
 
         <SectionCard
