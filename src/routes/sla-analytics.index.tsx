@@ -342,14 +342,23 @@ function SlaAnalytics() {
                 >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-navy">{s.label}</p>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge
+                      label={sampleQuality(s.count, s.breachRate).label}
+                      tone={sampleQuality(s.count, s.breachRate).tone}
+                    />
                   <StatusBadge
                     label={`${Math.round(s.breachRate)}% breach`}
                     tone={breachTone(s.breachRate)}
                   />
+                  </div>
                 </div>
                 <p className="tnum mt-1 text-xs text-muted-foreground">
                   Avg {formatHours(s.avgHours)} · avg target {Math.round(s.targetHours * 10) / 10}h · worst{" "}
                   {formatHours(s.worstHours)} · {s.count} hand-offs
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {sampleQuality(s.count, s.breachRate).note}
                 </p>
                 </button>
               </li>
@@ -408,6 +417,14 @@ function SlaAnalytics() {
                   fontSize: 12,
                 }}
                 formatter={(value: number) => [`${Math.round(value * 10) / 10}h`, "Avg turnaround"]}
+                labelFormatter={(label: string) => {
+                  const g = groups.find((x) => x.label === label);
+                  if (!g) return label;
+                  const q = sampleQuality(g.count, g.breachRate);
+                  return `${label} · n=${g.count} · ${Math.round(g.breachRate)}% breach ±${q.marginPct}pp${
+                    q.tier === "reliable" ? "" : " (small sample)"
+                  }`;
+                }}
               />
               <ReferenceLine
                 y={referenceTarget}
@@ -415,6 +432,18 @@ function SlaAnalytics() {
                 strokeDasharray="4 3"
                 label={{ value: `${referenceTarget}h avg target`, position: "right", fontSize: 11 }}
               />
+              <defs>
+                <pattern
+                  id="sla-thin-sample"
+                  patternUnits="userSpaceOnUse"
+                  width={6}
+                  height={6}
+                  patternTransform="rotate(45)"
+                >
+                  <rect width={6} height={6} fill="var(--card)" />
+                  <line x1={0} y1={0} x2={0} y2={6} stroke="currentColor" strokeWidth={3} />
+                </pattern>
+              </defs>
               <Bar dataKey="avgHours" radius={[4, 4, 0, 0]} cursor="pointer">
                 {groups.map((g) => (
                   <Cell
@@ -426,12 +455,22 @@ function SlaAnalytics() {
                           ? "var(--warning)"
                           : "var(--primary)"
                     }
+                    fillOpacity={g.count < minReliableSample ? 0.4 : 1}
+                    stroke={
+                      g.count < minReliableSample ? "var(--muted-foreground)" : undefined
+                    }
+                    strokeDasharray={g.count < minReliableSample ? "4 3" : undefined}
                   />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Faded, dashed bars carry fewer than {minReliableSample} hand-offs — read them as
+          indicative only. Sample size and the ±pp confidence range appear in the tooltip and the
+          table below.
+        </p>
 
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
@@ -445,6 +484,7 @@ function SlaAnalytics() {
                 <th className="py-2 pr-4 font-medium">Worst</th>
                 <th className="py-2 pr-4 font-medium">Breaches</th>
                 <th className="py-2 font-medium">Breach rate</th>
+                <th className="py-2 pl-4 font-medium">Sample</th>
               </tr>
             </thead>
             <tbody>
