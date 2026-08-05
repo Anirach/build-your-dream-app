@@ -63,12 +63,22 @@ export function StatusBadge({
 export const ragTone: Record<Rag, Tone> = { green: "success", amber: "warning", red: "danger" };
 export const ragLabel: Record<Rag, string> = { green: "GREEN", amber: "AMBER", red: "RED" };
 
-export function RagBadge({ rag, className }: { rag: Rag; className?: string }) {
+export function RagBadge({
+  rag,
+  className,
+  label,
+  size,
+}: {
+  rag: Rag;
+  className?: string | undefined;
+  label?: string | undefined;
+  size?: "lg" | undefined;
+}) {
   return (
     <StatusBadge
-      label={ragLabel[rag]}
+      label={label ?? ragLabel[rag]}
       tone={ragTone[rag]}
-      className={className}
+      className={cn(size === "lg" && "px-3 py-1.5 text-sm", className)}
       title={
         rag === "green"
           ? "Rule-calculated: no breached thresholds"
@@ -78,6 +88,16 @@ export function RagBadge({ rag, className }: { rag: Rag; className?: string }) {
       }
     />
   );
+}
+
+export function RuleResultBadge({ result }: { result: "breach" | "watch" | "pass" }) {
+  const map = {
+    breach: { label: "Breach", tone: "danger" as Tone, title: "Threshold breached at red level" },
+    watch: { label: "Watch", tone: "warning" as Tone, title: "Threshold breached at amber level" },
+    pass: { label: "Pass", tone: "success" as Tone, title: "Within threshold" },
+  };
+  const entry = map[result];
+  return <StatusBadge label={entry.label} tone={entry.tone} title={entry.title} />;
 }
 
 export function stateTone(state: string): Tone {
