@@ -1,6 +1,8 @@
 // Concept-only presentation model. Multi-step correction workflow: a correction
 // is never applied by a single actor. It is requested, countersigned by a
 // reviewer who did not raise it, then applied as a reversal on the audit trail.
+import { baselineSignOffRules, type SignOffRule } from "./signoff-rules";
+
 export type CorrectionStatus =
   | "Awaiting sign-off"
   | "Signed off"
@@ -15,16 +17,28 @@ export interface CorrectionStep {
   note: string;
 }
 
+export interface CorrectionSignOff {
+  actor: string;
+  role: string;
+  at: string;
+  note: string;
+}
+
 export interface CorrectionRequest {
   id: string;
   objectRef: string;
   objectType: string;
+  /** Mandate type that decides which sign-off rule applies. */
+  mandateType: string;
+  /** Rule snapshot taken when the request was raised. */
+  rule: SignOffRule;
   traceId: string;
   proposedChange: string;
   reason: string;
   status: CorrectionStatus;
   requestedBy: string;
   requestedAt: string;
+  signOffs: CorrectionSignOff[];
   signedOffBy?: string;
   appliedBy?: string;
   history: CorrectionStep[];
