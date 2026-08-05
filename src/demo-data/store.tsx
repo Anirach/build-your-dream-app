@@ -25,6 +25,11 @@ import {
   type EvidenceAttachment,
 } from "./evidence-uploads";
 import {
+  pendingRequestFor,
+  pendingRequestForLineage,
+  type EvidenceRollbackRequest,
+} from "./evidence-rollback";
+import {
   activePacket,
   packetById,
   type PacketId,
@@ -233,8 +238,12 @@ interface DemoState {
     note: string;
   }) => EvidenceAttachment | null;
   removeEvidenceAttachment: (attachmentId: string, reason: string) => boolean;
-  /** Make an earlier revision current again; every revision is retained. */
-  rollbackEvidenceRevision: (attachmentId: string, reason: string) => boolean;
+  /** Raise a rollback request; a PMO approver must confirm before it applies. */
+  requestEvidenceRollback: (attachmentId: string, reason: string) => boolean;
+  /** PMO decision on a pending rollback request; approval applies the rollback. */
+  decideEvidenceRollback: (requestId: string, approve: boolean, note: string) => boolean;
+  /** Session rollback requests, newest first. */
+  evidenceRollbackRequests: EvidenceRollbackRequest[];
   requestPacketAttestation: (packetId: PacketId) => boolean;
   packetAttestations: Partial<Record<PacketId, PacketAttestation>>;
   attestPacket: (packetId: PacketId, reason: string) => boolean;
@@ -314,6 +323,8 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     useState<ReviewPackageView[]>(seedReviewPackages);
   const [evidenceAttachments, setEvidenceAttachments] = useState<EvidenceAttachment[]>([]);
   const [attachmentSeq, setAttachmentSeq] = useState(1);
+  const [rollbackRequests, setRollbackRequests] = useState<EvidenceRollbackRequest[]>([]);
+  const [rollbackSeq, setRollbackSeq] = useState(1);
 
   const actor = roleAssignments[role] ?? actorFor(role);
 
@@ -1453,16 +1464,123 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [actor, authorise, evidenceAttachments, pushEvent],
   );
 
-  const rollbackEvidenceRevision = useCallback<DemoState["rollbackEvidenceRevision"]>(
+  const requestEvidenceRollback = useCallback<DemoState["requestEvidenceRollback"]>(
     (attachmentId, reason) => {
       const target = evidenceAttachments.find((a) => a.id === attachmentId);
       if (!target) return false;
       if (target.status === "Current") return false;
       if (!authorise("evidence.rollback", "Evidence artifact", target.artifactId)) return false;
+      if (pendingRequestForLineage(rollbackRequests, target.lineageId)) {
+        pushEvent({
+          actor,
+          actorType: "System",
+          action: "Blocked duplicate evidence rollback request",
+          objectType: "Evidence artifact",
+          objectRef: `${target.artifactId} · ${target.id}`,
+          beforeAfter: "no change - a rollback request is already awaiting approval",
+          reason: "One rollback request per lineage may be open at a time.",
+          traceId: "trc-readiness",
+        });
+        return false;
+      }
+      const current = evidenceAttachments.find(
+        (a) => a.lineageId === target.lineageId && a.status === "Current",
+      );
+      const request: EvidenceRollbackRequest = {
+        id: `RBK-${rollbackSeq}`,
+        attachmentId: target.id,
+        artifactId: target.artifactId,
+        lineageId: target.lineageId,
+        revision: target.revision,
+        fileName: target.fileName,
+        ...(current ? { currentAttachmentId: current.id, currentRevision: current.revision } : {}),
+        reason: reason || "No reason supplied",
+        requestedBy: actor,
+        requestedByRole: role,
+        requestedAt: now(),
+        status: "Pending approval",
+      };
+      setRollbackSeq((n) => n + 1);
+      setRollbackRequests((prev) => [request, ...prev]);
+      pushEvent({
+        actor,
+        actorType: "Human",
+        action: `Requested rollback to evidence revision r${target.revision}`,
+        objectType: "Evidence rollback request",
+        objectRef: `${request.id} · ${target.artifactId} · ${target.id}`,
+        beforeAfter: current
+          ? `${current.id} r${current.revision} stays current - awaiting Programme Management Office approval to reinstate ${target.id} r${target.revision}`
+          : `no change - awaiting Programme Management Office approval to reinstate ${target.id} r${target.revision}`,
+        reason: request.reason,
+        traceId: "trc-readiness",
+      });
+      return true;
+    },
+    [actor, authorise, evidenceAttachments, pushEvent, role, rollbackRequests, rollbackSeq],
+  );
+
+  const decideEvidenceRollback = useCallback<DemoState["decideEvidenceRollback"]>(
+    (requestId, approve, note) => {
+      const request = rollbackRequests.find((r) => r.id === requestId);
+      if (!request) return false;
+      if (request.status !== "Pending approval") return false;
+      if (
+        !authorise(
+          "evidence.rollback.approve",
+          "Evidence rollback request",
+          `${request.id} · ${request.artifactId}`,
+        )
+      )
+        return false;
+      if (request.requestedBy === actor) {
+        pushEvent({
+          actor,
+          actorType: "System",
+          action: "Blocked rollback approval by the requester",
+          objectType: "Evidence rollback request",
+          objectRef: `${request.id} · ${request.artifactId}`,
+          beforeAfter: "no change - segregation of duties",
+          reason: "The actor who raised a rollback request may not approve it.",
+          traceId: "trc-readiness",
+        });
+        return false;
+      }
+      const target = evidenceAttachments.find((a) => a.id === request.attachmentId);
+      const stamp = now();
+      setRollbackRequests((prev) =>
+        prev.map((r) =>
+          r.id === request.id
+            ? {
+                ...r,
+                status: approve ? ("Approved" as const) : ("Rejected" as const),
+                decidedBy: actor,
+                decidedByRole: role,
+                decidedAt: stamp,
+                decisionNote: note || "No note supplied",
+              }
+            : r,
+        ),
+      );
+
+      if (!approve || !target) {
+        pushEvent({
+          actor,
+          actorType: "Human",
+          action: approve
+            ? "Approved rollback request but the revision was no longer available"
+            : `Rejected rollback to evidence revision r${request.revision}`,
+          objectType: "Evidence rollback request",
+          objectRef: `${request.id} · ${request.artifactId} · ${request.attachmentId}`,
+          beforeAfter: "no change - rollback not applied",
+          reason: note || "No note supplied",
+          traceId: "trc-readiness",
+        });
+        return true;
+      }
+
       const supersededCurrent = evidenceAttachments.find(
         (a) => a.lineageId === target.lineageId && a.status === "Current",
       );
-      const stamp = now();
       setEvidenceAttachments((prev) =>
         prev.map((a) => {
           if (a.id === target.id) {
@@ -1473,7 +1591,7 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
               ...(supersededCurrent ? { reinstatedFromId: supersededCurrent.id } : {}),
               reinstatedBy: actor,
               reinstatedAt: stamp,
-              reinstatementReason: reason || "No reason supplied",
+              reinstatementReason: `${request.reason} · requested by ${request.requestedBy}, approved by ${actor}`,
             };
           }
           if (a.lineageId === target.lineageId && a.status === "Current") {
@@ -1485,18 +1603,18 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       pushEvent({
         actor,
         actorType: "Human",
-        action: `Rolled evidence lineage back to revision r${target.revision}`,
-        objectType: "Evidence artifact",
-        objectRef: `${target.artifactId} · ${target.id}`,
+        action: `Approved and applied rollback to evidence revision r${target.revision}`,
+        objectType: "Evidence rollback request",
+        objectRef: `${request.id} · ${target.artifactId} · ${target.id}`,
         beforeAfter: supersededCurrent
           ? `${supersededCurrent.id} r${supersededCurrent.revision} (${supersededCurrent.fileName}) current -> ${target.id} r${target.revision} (${target.fileName}) current · lineage ${target.lineageId}`
           : `${target.id} r${target.revision} (${target.fileName}) marked current · lineage ${target.lineageId}`,
-        reason: reason || "No reason supplied",
+        reason: `${note || "No note supplied"} · request ${request.id} raised by ${request.requestedBy}: ${request.reason}`,
         traceId: "trc-readiness",
       });
       return true;
     },
-    [actor, authorise, evidenceAttachments, pushEvent],
+    [actor, authorise, evidenceAttachments, pushEvent, role, rollbackRequests],
   );
 
   const requestPacketAttestation = useCallback<DemoState["requestPacketAttestation"]>(
@@ -1640,6 +1758,8 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     setEvidenceRegister(seedEvidenceRegister);
     setEvidenceAttachments([]);
     setAttachmentSeq(1);
+    setRollbackRequests([]);
+    setRollbackSeq(1);
     setPacketAttestations({});
     setAcceptedPackets([]);
     setAcceptanceHistory([]);
@@ -1745,7 +1865,9 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       attachmentsFor,
       attachEvidenceFile,
       removeEvidenceAttachment,
-      rollbackEvidenceRevision,
+      requestEvidenceRollback,
+      decideEvidenceRollback,
+      evidenceRollbackRequests: rollbackRequests,
       requestPacketAttestation,
       packetAttestations,
       attestPacket,
@@ -1768,7 +1890,9 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       attachmentsFor,
       attachEvidenceFile,
       removeEvidenceAttachment,
-      rollbackEvidenceRevision,
+      requestEvidenceRollback,
+      decideEvidenceRollback,
+      rollbackRequests,
       requestPacketAttestation,
       packetAttestations,
       attestPacket,
