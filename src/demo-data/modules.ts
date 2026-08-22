@@ -45,6 +45,7 @@ export const MODULE_CODES = [
   "M27",
   "M28",
   "M29",
+  "M30",
 ] as const;
 
 export const ESTATES = [
@@ -181,6 +182,9 @@ const seeds: Seed[] = [
   ]),
   s("M28", "Training and Simulation Readiness", "green", 85, "Estate G", "p-nabila", 0, 1, 0, 1, 0, 3),
   s("M29", "Accreditation Submission Pack", "green", 74, "Estate A", "p-maya", 0, 2, 0, 2, 2, 2),
+  s("M30", "Handover and Operational Transition", "amber", 63, "Estate A", "p-arif", 1, 3, 0, 4, 7, 2, [
+    "evidence-incomplete",
+  ]),
 ];
 
 export const modules: ModuleSummary[] = seeds.map((seed) => ({
