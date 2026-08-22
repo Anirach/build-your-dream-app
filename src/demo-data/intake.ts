@@ -798,7 +798,7 @@ export const importDatasets: ImportDatasetDef[] = [
     label: "Module registry change set",
     sampleName: "Registry change-set sample (synthetic)",
     columns: [
-      { sourceColumn: "Module Code", sampleValue: "M30", expectedField: "module_code", required: true },
+      { sourceColumn: "Module Code", sampleValue: "M31", expectedField: "module_code", required: true },
       { sourceColumn: "Name", sampleValue: "Pharmacy Automation Readiness", expectedField: "module_name", required: true },
       { sourceColumn: "Estate", sampleValue: "Estate E", expectedField: "estate", required: true },
       { sourceColumn: "Source Doc", sampleValue: "SCH-001 rev C", expectedField: "source_ref", required: true },
@@ -806,10 +806,10 @@ export const importDatasets: ImportDatasetDef[] = [
     rows: [
       {
         row: 1,
-        reference: "M30",
+        reference: "M31",
         summary: "Proposed addition, routed to owner approval",
         outcome: "Warning",
-        issue: issue(1, "module_code", "M30", "Registry changes cannot be applied by import", "Submit a registry change proposal for owner approval", "warning"),
+        issue: issue(1, "module_code", "M31", "Registry changes cannot be applied by import", "Submit a registry change proposal for owner approval", "warning"),
       },
       {
         row: 2,
@@ -867,7 +867,7 @@ export const seedProposals: RegistryChangeProposalView[] = [
   {
     id: "PRP-0007",
     changeType: "Add module",
-    moduleCode: "M30",
+    moduleCode: "M31",
     moduleName: "Pharmacy Automation Readiness",
     estate: "Estate E",
     crosswalk: "PRD 4.12",
@@ -882,8 +882,8 @@ export const seedProposals: RegistryChangeProposalView[] = [
     status: "Pending owner approval",
     validation: [
       { check: "Required fields", result: "pass", detail: "All required proposal fields are present." },
-      { check: "Duplicate module code", result: "pass", detail: "M30 is not present in the governed registry." },
-      { check: "Code format", result: "pass", detail: "M30 matches the M## convention." },
+      { check: "Duplicate module code", result: "pass", detail: "M31 is not present in the governed registry." },
+      { check: "Code format", result: "pass", detail: "M31 matches the M## convention." },
       { check: "Estate present", result: "pass", detail: "Estate E is a known estate." },
       { check: "Source-document reference", result: "pass", detail: "SCH-001 rev C, section 4.12 provided." },
       { check: "Schedule reference impact", result: "warning", detail: "SCH-001 milestones must be re-issued for the new module." },
