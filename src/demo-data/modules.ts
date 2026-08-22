@@ -45,6 +45,7 @@ export const MODULE_CODES = [
   "M27",
   "M28",
   "M29",
+  "M30",
 ] as const;
 
 export const ESTATES = [
@@ -181,6 +182,9 @@ const seeds: Seed[] = [
   ]),
   s("M28", "Training and Simulation Readiness", "green", 85, "Estate G", "p-nabila", 0, 1, 0, 1, 0, 3),
   s("M29", "Accreditation Submission Pack", "green", 74, "Estate A", "p-maya", 0, 2, 0, 2, 2, 2),
+  s("M30", "Handover and Operational Transition", "amber", 63, "Estate A", "p-arif", 1, 3, 0, 4, 7, 2, [
+    "evidence-incomplete",
+  ]),
 ];
 
 export const modules: ModuleSummary[] = seeds.map((seed) => ({
@@ -214,11 +218,11 @@ export const programmeSummary = {
     "The programme is progressing, but 5 modules require intervention before the next gate.",
   baseline: "BL0 - SCH-001 as issued",
   nextMilestone: "Programme Gate 1 - 21 days",
-  totalModules: 30,
+  totalModules: 31,
   redModules: 5,
-  amberModules: 11,
+  amberModules: 12,
   greenModules: 14,
-  overduePackages: 17,
+  overduePackages: 18,
   decisionsAwaiting: 8,
   lastRefreshed: "5 Aug 2026, 09:12",
 };

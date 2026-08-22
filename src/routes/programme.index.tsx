@@ -48,7 +48,7 @@ export const Route = createFileRoute("/programme/")({
       {
         name: "description",
         content:
-          "Filter and compare all 30 synthetic commissioning modules by RAG status, estate, stage and owner.",
+          "Filter and compare all 31 synthetic commissioning modules by RAG status, estate, stage and owner.",
       },
       { property: "og:title", content: "Programme Modules - BDMS Intelligence Mockup" },
       {
@@ -104,7 +104,7 @@ function ProgrammeIndex() {
       <PageHeader
         crumbs={[{ label: "SHSIRC - Dhaka", to: "/" }, { label: "Programme" }]}
         title="Programme modules"
-        subtitle="All 30 commissioning modules with rule-calculated status. Labels are placeholders pending the official registry."
+        subtitle="All 31 commissioning modules with rule-calculated status. Labels are placeholders pending the official registry."
         secondary={
           <DemoDownloadButton
             filename="bdms-modules-demo.csv"

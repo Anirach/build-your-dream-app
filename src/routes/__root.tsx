@@ -88,7 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Programme-level commissioning readiness across 30 synthetic modules, with rule-based RAG explanations and overdue decisions.",
+          "Programme-level commissioning readiness across 31 synthetic modules, with rule-based RAG explanations and overdue decisions.",
       },
       { name: "author", content: "BDMS" },
       { name: "robots", content: "noindex" },
@@ -96,13 +96,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         property: "og:description",
         content:
-          "Programme-level commissioning readiness across 30 synthetic modules, with rule-based RAG explanations and overdue decisions.",
+          "Programme-level commissioning readiness across 31 synthetic modules, with rule-based RAG explanations and overdue decisions.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Executive Overview - BDMS Intelligence Mockup" },
-      { name: "twitter:description", content: "Programme-level commissioning readiness across 30 synthetic modules, with rule-based RAG explanations and overdue decisions." },
+      { name: "twitter:description", content: "Programme-level commissioning readiness across 31 synthetic modules, with rule-based RAG explanations and overdue decisions." },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/34beb6f7-f277-4722-b2d9-66ac745398e5" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/34beb6f7-f277-4722-b2d9-66ac745398e5" },
     ],
