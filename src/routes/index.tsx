@@ -47,13 +47,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Programme-level commissioning readiness across 30 synthetic modules, with rule-based RAG explanations and overdue decisions.",
+          "Programme-level commissioning readiness across 31 synthetic modules, with rule-based RAG explanations and overdue decisions.",
       },
       { property: "og:title", content: "Executive Overview - BDMS Intelligence Mockup" },
       {
         property: "og:description",
         content:
-          "Programme-level commissioning readiness across 30 synthetic modules, with rule-based RAG explanations and overdue decisions.",
+          "Programme-level commissioning readiness across 31 synthetic modules, with rule-based RAG explanations and overdue decisions.",
       },
     ],
   }),
@@ -68,7 +68,7 @@ function Overview() {
       <PageHeader
         crumbs={[{ label: "SHSIRC - Dhaka" }, { label: "Executive Overview" }]}
         title="Executive Overview"
-        subtitle="Programme readiness across 30 commissioning modules, calculated from synthetic rules rather than manual judgement."
+        subtitle="Programme readiness across 31 commissioning modules, calculated from synthetic rules rather than manual judgement."
         refreshed={programmeSummary.lastRefreshed}
         secondary={
           <DemoDownloadButton
